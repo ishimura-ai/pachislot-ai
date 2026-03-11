@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#06060f">
+  <meta name="description" content="パチスロ期待値・設定推測AIツール - ベイズ推定による設定判別、期待値計算、時給換算、ヤメ時推定">
+
+  <title>パチスロ設定推測AI</title>
+
+  <link rel="manifest" href="./manifest.json">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+  <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+
+  <div id="app">
+
+    <!-- ============ Header ============ -->
+    <header class="app-header">
+      <h1>PACHISLOT AI</h1>
+      <p class="subtitle">設定推測 ・ 期待値計算</p>
+    </header>
+
+    <!-- ============ HOME SCREEN ============ -->
+    <div id="home" class="screen active">
+
+      <!-- Machine Select Card -->
+      <div class="menu-card" data-target="machine-select">
+        <div class="menu-icon purple">🎰</div>
+        <div class="menu-info">
+          <h3>機種選択</h3>
+          <p>機種を選んで解析データを読み込み</p>
+        </div>
+        <span class="menu-arrow">›</span>
+      </div>
+
+      <!-- Screenshot Card -->
+      <div class="menu-card" data-target="screenshot">
+        <div class="menu-icon gold">📸</div>
+        <div class="menu-info">
+          <h3>スクショ解析</h3>
+          <p>台データのスクリーンショットをOCR解析</p>
+        </div>
+        <span class="menu-arrow">›</span>
+      </div>
+
+      <!-- Manual Input Card -->
+      <div class="menu-card" data-target="input">
+        <div class="menu-icon green">✏️</div>
+        <div class="menu-info">
+          <h3>手動入力</h3>
+          <p>回転数・ボーナス・小役を入力</p>
+        </div>
+        <span class="menu-arrow">›</span>
+      </div>
+
+      <!-- Quick Result Card (if machine selected) -->
+      <div id="quick-status" class="card glow" style="display:none;">
+        <div class="card-title"><span class="icon">📌</span>選択中の機種</div>
+        <div class="detail-row">
+          <span class="label">機種名</span>
+          <span class="value" id="home-machine-name">-</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============ MACHINE SELECT SCREEN ============ -->
+    <div id="machine-select" class="screen">
+      <button class="back-btn"
+        onclick="document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('home').classList.add('active');">
+        ‹ 戻る
+      </button>
+
+      <div class="card">
+        <div class="card-title"><span class="icon">🔍</span>機種を検索</div>
+        <input type="text" class="form-input" id="machine-search" placeholder="機種名を入力（例：北斗、からくり）">
+        <div id="machine-info-panel" class="machine-info-panel"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="icon">📋</span>対応機種一覧 <span id="machine-count"
+            style="margin-left:auto;font-size:0.9em;color:var(--accent-secondary)"></span></div>
+        <div id="machine-chips" class="machine-select-list"></div>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn btn-secondary" onclick="
+        document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+        document.getElementById('custom-machine').classList.add('active');
+        window.scrollTo(0,0);
+      ">＋ カスタム機種を追加</button>
+        <button class="btn btn-primary" onclick="
+        if(!document.querySelector('.machine-chip.selected')){return;}
+        document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+        document.getElementById('input').classList.add('active');
+        window.scrollTo(0,0);
+      ">入力画面へ ›</button>
+      </div>
+    </div>
+
+    <!-- ============ CUSTOM MACHINE SCREEN ============ -->
+    <div id="custom-machine" class="screen">
+      <button class="back-btn"
+        onclick="document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('machine-select').classList.add('active');">
+        ‹ 機種選択に戻る
+      </button>
+
+      <div class="card glow">
+        <div class="card-title"><span class="icon">🛠</span>カスタム機種登録</div>
+        <p style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:14px;">
+          一覧にない機種を自分で登録できます。設定1と設定6の値を入力すると、設定2〜5は自動補間されます。</p>
+
+        <div class="form-group">
+          <label class="form-label">機種名（必須）</label>
+          <input type="text" class="form-input" id="custom-name" placeholder="例：○○の△△">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">タイプ</label>
+            <select class="form-input" id="custom-type">
+              <option value="AT">AT機</option>
+              <option value="Aタイプ">Aタイプ</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">天井 (G)</label>
+            <input type="number" class="form-input" id="custom-ceiling" placeholder="999" inputmode="numeric">
+          </div>
+        </div>
+
+        <div class="section-divider"></div>
+        <div class="card-title"><span class="icon">📈</span>機械割（%）</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">設定1</label>
+            <input type="number" class="form-input" id="custom-payout1" placeholder="97.0" inputmode="decimal"
+              step="0.1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">設定6</label>
+            <input type="number" class="form-input" id="custom-payout6" placeholder="115.0" inputmode="decimal"
+              step="0.1">
+          </div>
+        </div>
+
+        <div class="section-divider"></div>
+        <div class="card-title"><span class="icon">🎯</span>初当たり確率（分母）</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">設定1 (1/X)</label>
+            <input type="number" class="form-input" id="custom-hit1" placeholder="400" inputmode="numeric">
+          </div>
+          <div class="form-group">
+            <label class="form-label">設定6 (1/X)</label>
+            <input type="number" class="form-input" id="custom-hit6" placeholder="200" inputmode="numeric">
+          </div>
+        </div>
+
+        <div class="section-divider"></div>
+        <div class="card-title"><span class="icon">🍒</span>ベル確率（分母）</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">設定1 (1/X)</label>
+            <input type="number" class="form-input" id="custom-bell1" placeholder="7.5" inputmode="decimal" step="0.1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">設定6 (1/X)</label>
+            <input type="number" class="form-input" id="custom-bell6" placeholder="5.9" inputmode="decimal" step="0.1">
+          </div>
+        </div>
+
+        <button id="btn-save-custom" class="btn btn-success btn-full btn-lg" style="margin-top:16px;">
+          💾 機種を登録
+        </button>
+      </div>
+    </div>
+
+    <!-- ============ SCREENSHOT SCREEN ============ -->
+    <div id="screenshot" class="screen">
+      <button class="back-btn"
+        onclick="document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('home').classList.add('active');">
+        ‹ 戻る
+      </button>
+
+      <div class="card">
+        <div class="card-title"><span class="icon">📸</span>スクリーンショット解析</div>
+
+        <div class="upload-area" id="upload-area">
+          <input type="file" id="screenshot-input" accept="image/*" capture="environment">
+          <div class="upload-icon">📷</div>
+          <p>タップして画像を選択</p>
+          <small>台データのスクリーンショットをアップロード</small>
+        </div>
+
+        <div id="upload-preview" class="upload-preview">
+          <img id="preview-img" src="" alt="Preview">
+          <button id="remove-screenshot" class="remove-btn">✕</button>
+        </div>
+
+        <div id="ocr-loading" class="ocr-loading">
+          <div class="spinner"></div>
+          <p>OCR解析中...</p>
+          <div class="ocr-progress"><span id="ocr-progress-value">0</span>%</div>
+        </div>
+
+        <div id="ocr-result" class="card" style="display:none; margin-top:12px; background:var(--bg-card-alt);">
+        </div>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn btn-primary btn-full" onclick="
+        document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+        document.getElementById('input').classList.add('active');
+        window.scrollTo(0,0);
+      ">入力画面で確認・修正 ›</button>
+      </div>
+    </div>
+
+    <!-- ============ INPUT SCREEN ============ -->
+    <div id="input" class="screen">
+      <button class="back-btn"
+        onclick="document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('home').classList.add('active');">
+        ‹ 戻る
+      </button>
+
+      <div id="selected-machine-banner" class="card glow">
+        <div class="card-title"><span class="icon">🎰</span>選択機種</div>
+        <div style="font-size:1.1rem; font-weight:700;">
+          <span id="selected-machine-display">未選択</span>
+        </div>
+      </div>
+
+      <!-- 回転数 -->
+      <div class="card">
+        <div class="card-title"><span class="icon">🔄</span>回転数</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">総回転数</label>
+            <input type="number" class="form-input" id="input-total-spins" data-key="totalSpins" placeholder="0"
+              inputmode="numeric">
+          </div>
+          <div class="form-group">
+            <label class="form-label">現在ゲーム数</label>
+            <input type="number" class="form-input" id="input-current-game" data-key="currentGame" placeholder="0"
+              inputmode="numeric">
+          </div>
+        </div>
+      </div>
+
+      <!-- ボーナス・AT -->
+      <div class="card">
+        <div class="card-title"><span class="icon">🎯</span>ボーナス・AT</div>
+        <div class="form-row-3">
+          <div class="form-group">
+            <label class="form-label">BIG</label>
+            <input type="number" class="form-input" id="input-big" data-key="big" placeholder="0" inputmode="numeric">
+          </div>
+          <div class="form-group">
+            <label class="form-label">REG</label>
+            <input type="number" class="form-input" id="input-reg" data-key="reg" placeholder="0" inputmode="numeric">
+          </div>
+          <div class="form-group">
+            <label class="form-label">AT</label>
+            <input type="number" class="form-input" id="input-at" data-key="at" placeholder="0" inputmode="numeric">
+          </div>
+        </div>
+      </div>
+
+      <!-- 投資・回収 -->
+      <div class="card">
+        <div class="card-title"><span class="icon">💳</span>投資・回収</div>
+        <div class="form-row-3">
+          <div class="form-group">
+            <label class="form-label">投資 (円)</label>
+            <input type="number" class="form-input" data-key="investment" placeholder="0" inputmode="numeric">
+          </div>
+          <div class="form-group">
+            <label class="form-label">回収 (円)</label>
+            <input type="number" class="form-input" data-key="revenue" placeholder="0" inputmode="numeric">
+          </div>
+          <div class="form-group">
+            <label class="form-label">差枚</label>
+            <input type="number" class="form-input" data-key="diffCoins" placeholder="0" inputmode="numeric">
+          </div>
+        </div>
+      </div>
+
+      <!-- 小役 -->
+      <div class="card">
+        <div class="card-title"><span class="icon">🍒</span>小役カウント</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">ベル</label>
+            <input type="number" class="form-input" data-key="bell" placeholder="0" inputmode="numeric">
+          </div>
+          <div class="form-group">
+            <label class="form-label">弱チェリー</label>
+            <input type="number" class="form-input" data-key="weakCherry" placeholder="0" inputmode="numeric">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">スイカ</label>
+            <input type="number" class="form-input" data-key="watermelon" placeholder="0" inputmode="numeric">
+          </div>
+          <div class="form-group">
+            <label class="form-label">チャンス目</label>
+            <input type="number" class="form-input" data-key="chance" placeholder="0" inputmode="numeric">
+          </div>
+        </div>
+      </div>
+
+      <!-- CZ -->
+      <div class="card">
+        <div class="card-title"><span class="icon">⚡</span>CZ</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">CZ突入</label>
+            <input type="number" class="form-input" data-key="czEntry" placeholder="0" inputmode="numeric">
+          </div>
+          <div class="form-group">
+            <label class="form-label">CZ成功</label>
+            <input type="number" class="form-input" data-key="czSuccess" placeholder="0" inputmode="numeric">
+          </div>
+        </div>
+      </div>
+
+      <!-- AT初当たり -->
+      <div class="card">
+        <div class="card-title"><span class="icon">🎪</span>AT初当たり</div>
+        <div class="form-group">
+          <label class="form-label">AT初当たり回数</label>
+          <input type="number" class="form-input" data-key="atFirstHit" placeholder="0" inputmode="numeric">
+        </div>
+      </div>
+
+      <!-- 設定確定演出 -->
+      <div class="card">
+        <div class="card-title"><span class="icon">⭐</span>設定確定演出</div>
+        <div class="chip-group">
+          <div class="chip" data-confirm="設定2以上">設定2以上</div>
+          <div class="chip" data-confirm="設定4以上">設定4以上</div>
+          <div class="chip" data-confirm="設定5以上">設定5以上</div>
+          <div class="chip" data-confirm="設定6確定">設定6確定</div>
+        </div>
+      </div>
+
+      <!-- 終了画面・トロフィー -->
+      <div class="card">
+        <div class="card-title"><span class="icon">🏆</span>演出・確認</div>
+        <div class="form-group">
+          <label class="form-label">終了画面</label>
+          <input type="text" class="form-input" data-text-key="endScreen" placeholder="例：エンディング画面">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">トロフィー</label>
+            <select class="form-input" data-text-key="trophy">
+              <option value="">なし</option>
+              <option value="銅">銅</option>
+              <option value="銀">銀</option>
+              <option value="金">金</option>
+              <option value="キリン柄">キリン柄</option>
+              <option value="レインボー">レインボー</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">ボイス</label>
+            <input type="text" class="form-input" data-text-key="voice" placeholder="例：特殊ボイス">
+          </div>
+        </div>
+      </div>
+
+      <!-- ホール状況 -->
+      <div class="card">
+        <div class="card-title"><span class="icon">🏢</span>ホール状況</div>
+        <div class="hall-tags">
+          <div class="hall-tag" data-hall="specialDay">🔥 特日</div>
+          <div class="hall-tag" data-hall="lineup">👥 並び</div>
+          <div class="hall-tag" data-hall="allDevices">🎰 全台系</div>
+        </div>
+      </div>
+
+      <!-- Analyze Button -->
+      <button id="btn-analyze" class="btn btn-primary btn-full btn-lg" style="margin-top:8px; margin-bottom:24px;">
+        🤖 AI分析を実行
+      </button>
+
+    </div>
+
+    <!-- ============ RESULTS SCREEN ============ -->
+    <div id="results" class="screen">
+      <button class="back-btn"
+        onclick="document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('input').classList.add('active');">
+        ‹ 入力に戻る
+      </button>
+
+      <div id="results-content">
+        <!-- Dynamically populated -->
+      </div>
+
+      <div class="btn-group" style="margin-bottom:24px;">
+        <button class="btn btn-secondary"
+          onclick="document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('input').classList.add('active');window.scrollTo(0,0);">
+          ✏️ 入力修正
+        </button>
+        <button class="btn btn-primary"
+          onclick="document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('home').classList.add('active');window.scrollTo(0,0);">
+          🏠 トップへ
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ============ Bottom Navigation ============ -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" data-screen="home">
+      <span class="nav-icon">🏠</span>
+      <span class="nav-label">ホーム</span>
+    </button>
+    <button class="nav-item" data-screen="machine-select">
+      <span class="nav-icon">🎰</span>
+      <span class="nav-label">機種</span>
+    </button>
+    <button class="nav-item" data-screen="input">
+      <span class="nav-icon">✏️</span>
+      <span class="nav-label">入力</span>
+    </button>
+    <button class="nav-item" data-screen="results">
+      <span class="nav-icon">📊</span>
+      <span class="nav-label">結果</span>
+    </button>
+  </nav>
+
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
+
+  <!-- Scripts -->
+  <script src="./machines.js"></script>
+  <script src="./app.js"></script>
+
+</body>
+
+</html>

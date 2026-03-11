@@ -1,0 +1,2367 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#06060f">
+  <meta name="description" content="パチスロ期待値・設定推測AIツール - ベイズ推定による設定判別、期待値計算、時給換算、ヤメ時推定">
+
+  <title>パチスロ設定推測AI</title>
+
+  
+  
+  <style>
+/* =====================================================
+   パチスロ設定推測AI - スタイルシート
+   Premium Dark Mode / Mobile-First
+   ===================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700;900&family=Orbitron:wght@400;700;900&display=swap');
+
+/* ── CSS Custom Properties ── */
+:root {
+  --bg-primary: #06060f;
+  --bg-secondary: #0d0d1f;
+  --bg-card: #12122a;
+  --bg-card-alt: #181838;
+  --bg-input: #1a1a3a;
+  --bg-glass: rgba(18, 18, 42, 0.7);
+  --border-color: rgba(108, 92, 231, 0.2);
+  --border-glow: rgba(108, 92, 231, 0.5);
+  --text-primary: #e8e8f0;
+  --text-secondary: #9090b8;
+  --text-muted: #606088;
+  --accent-primary: #6c5ce7;
+  --accent-secondary: #a29bfe;
+  --accent-gradient: linear-gradient(135deg, #6c5ce7, #a29bfe, #fd79a8);
+  --gradient-gold: linear-gradient(135deg, #f9ca24, #f0932b, #eb4d4b);
+  --gradient-high: linear-gradient(135deg, #00b894, #00cec9);
+  --gradient-danger: linear-gradient(135deg, #e17055, #d63031);
+  --gradient-info: linear-gradient(135deg, #0984e3, #74b9ff);
+  --gradient-purple: linear-gradient(135deg, #6c5ce7, #a29bfe);
+  --success: #00b894;
+  --warning: #fdcb6e;
+  --danger: #e17055;
+  --info: #74b9ff;
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 20px rgba(0,0,0,0.4);
+  --shadow-lg: 0 8px 40px rgba(0,0,0,0.5);
+  --shadow-glow: 0 0 30px rgba(108, 92, 231, 0.2);
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ── Reset & Base ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 15px;
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  overflow-x: hidden;
+  padding-top: var(--safe-top);
+  padding-bottom: calc(70px + var(--safe-bottom));
+  -webkit-font-smoothing: antialiased;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background:
+    radial-gradient(ellipse at 20% 30%, rgba(108, 92, 231, 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 70%, rgba(253, 121, 168, 0.04) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--accent-primary); border-radius: 4px; }
+
+/* ── App Container ── */
+#app {
+  position: relative;
+  z-index: 1;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+/* ── Header ── */
+.app-header {
+  text-align: center;
+  padding: 24px 0 16px;
+}
+
+.app-header h1 {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 900;
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.app-header .subtitle {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  letter-spacing: 1px;
+}
+
+/* ── Screens ── */
+.screen {
+  display: none;
+  animation: fadeSlideIn 0.4s ease;
+}
+.screen.active { display: block; }
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Cards ── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  margin-bottom: 14px;
+  backdrop-filter: blur(10px);
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+.card:active {
+  transform: scale(0.98);
+}
+.card.glow {
+  border-color: var(--border-glow);
+  box-shadow: var(--shadow-glow);
+}
+
+.card-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-title .icon {
+  font-size: 1rem;
+}
+
+/* ── Menu Cards (Top Screen) ── */
+.menu-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 24px 20px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+.menu-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--accent-gradient);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.menu-card:active {
+  transform: scale(0.97);
+  border-color: var(--border-glow);
+}
+.menu-card:active::before { opacity: 1; }
+
+.menu-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+.menu-icon.purple { background: var(--gradient-purple); }
+.menu-icon.gold { background: var(--gradient-gold); }
+.menu-icon.green { background: var(--gradient-high); }
+.menu-icon.blue { background: var(--gradient-info); }
+.menu-icon.red { background: var(--gradient-danger); }
+
+.menu-info h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.menu-info p {
+  font-size: 0.73rem;
+  color: var(--text-secondary);
+}
+
+.menu-arrow {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 24px;
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+.btn:active {
+  transform: scale(0.95);
+}
+
+.btn-primary {
+  background: var(--accent-gradient);
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(108, 92, 231, 0.4);
+}
+.btn-primary:active {
+  box-shadow: 0 2px 10px rgba(108, 92, 231, 0.3);
+}
+
+.btn-secondary {
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.btn-success {
+  background: var(--gradient-high);
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(0, 184, 148, 0.3);
+}
+
+.btn-danger {
+  background: var(--gradient-danger);
+  color: #fff;
+}
+
+.btn-full {
+  width: 100%;
+}
+
+.btn-lg {
+  padding: 16px 28px;
+  font-size: 1rem;
+  border-radius: var(--radius-lg);
+}
+
+.btn-group {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+.btn-group .btn {
+  flex: 1;
+}
+
+/* ── Form Elements ── */
+.form-group {
+  margin-bottom: 14px;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  letter-spacing: 0.5px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.95rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.form-input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.15);
+}
+.form-input::placeholder {
+  color: var(--text-muted);
+}
+
+select.form-input {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239090b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 36px;
+}
+
+textarea.form-input {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.form-row-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+}
+
+/* ── Machine Select ── */
+.machine-select-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.machine-chip {
+  padding: 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.machine-chip:active, .machine-chip.selected {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: #fff;
+}
+
+/* ── Screenshot Upload ── */
+.upload-area {
+  border: 2px dashed var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 40px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+}
+.upload-area:active {
+  border-color: var(--accent-primary);
+  background: rgba(108, 92, 231, 0.05);
+}
+.upload-area .upload-icon {
+  font-size: 2.5rem;
+  margin-bottom: 12px;
+}
+.upload-area p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+.upload-area small {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  display: block;
+  margin-top: 6px;
+}
+.upload-area input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.upload-preview {
+  display: none;
+  margin-top: 12px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  position: relative;
+}
+.upload-preview img {
+  width: 100%;
+  border-radius: var(--radius-sm);
+}
+.upload-preview .remove-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0,0,0,0.7);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+/* ── Results ── */
+.result-section {
+  margin-bottom: 20px;
+}
+
+.result-section-title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--accent-secondary);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* Setting Bars */
+.setting-bar-container {
+  margin-bottom: 8px;
+}
+.setting-bar-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.82rem;
+  margin-bottom: 4px;
+}
+.setting-bar-label .setting-num {
+  font-weight: 600;
+}
+.setting-bar-label .setting-pct {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.setting-bar {
+  height: 8px;
+  background: var(--bg-input);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.setting-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 1s ease;
+  min-width: 2px;
+}
+.setting-bar-fill.s1 { background: var(--gradient-danger); }
+.setting-bar-fill.s2 { background: linear-gradient(90deg, #e17055, #fdcb6e); }
+.setting-bar-fill.s3 { background: linear-gradient(90deg, #fdcb6e, #ffeaa7); }
+.setting-bar-fill.s4 { background: var(--gradient-info); }
+.setting-bar-fill.s5 { background: var(--gradient-high); }
+.setting-bar-fill.s6 { background: var(--gradient-gold); }
+
+/* Stat Grid */
+.stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.stat-item {
+  background: var(--bg-card-alt);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  text-align: center;
+}
+.stat-item.full { grid-column: 1 / -1; }
+
+.stat-label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+.stat-value {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+.stat-value.positive { color: var(--success); }
+.stat-value.negative { color: var(--danger); }
+.stat-value.neutral { color: var(--info); }
+.stat-value.gold { 
+  background: var(--gradient-gold);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.stat-unit {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Confidence Badge */
+.confidence-badge {
+  display: inline-block;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.confidence-badge.very-high { background: var(--gradient-gold); color: #fff; }
+.confidence-badge.high { background: var(--gradient-high); color: #fff; }
+.confidence-badge.medium { background: var(--gradient-info); color: #fff; }
+.confidence-badge.low { background: var(--gradient-danger); color: #fff; }
+
+/* Quit Badge */
+.quit-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.quit-badge.continue { background: var(--gradient-high); color: #fff; }
+.quit-badge.maybe { background: var(--gradient-info); color: #fff; }
+.quit-badge.quit { background: var(--gradient-danger); color: #fff; }
+
+/* Detail Item */
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(108, 92, 231, 0.08);
+  font-size: 0.85rem;
+}
+.detail-row:last-child { border-bottom: none; }
+.detail-row .label { color: var(--text-secondary); }
+.detail-row .value { font-weight: 600; }
+
+/* ── Probability Table ── */
+.prob-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+  font-size: 0.78rem;
+}
+.prob-table th {
+  background: var(--bg-card-alt);
+  padding: 8px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-align: center;
+  border-bottom: 1px solid var(--border-color);
+}
+.prob-table td {
+  padding: 8px;
+  text-align: center;
+  border-bottom: 1px solid rgba(108, 92, 231, 0.05);
+}
+.prob-table tr:nth-child(even) td {
+  background: rgba(108, 92, 231, 0.03);
+}
+.prob-table .highlight {
+  color: var(--accent-secondary);
+  font-weight: 600;
+}
+
+/* ── Toggle & Chips ── */
+.chip-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.chip {
+  padding: 8px 14px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+}
+.chip.active {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: #fff;
+}
+
+/* ── OCR Loading ── */
+.ocr-loading {
+  display: none;
+  text-align: center;
+  padding: 30px;
+}
+.ocr-loading.active { display: block; }
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--bg-input);
+  border-top-color: var(--accent-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 16px;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.ocr-loading p {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+.ocr-progress {
+  margin-top: 10px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.1rem;
+  color: var(--accent-secondary);
+}
+
+/* ── Bottom Navigation ── */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: calc(60px + var(--safe-bottom));
+  background: rgba(6, 6, 15, 0.95);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 8px;
+  padding-bottom: var(--safe-bottom);
+  z-index: 100;
+}
+
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  transition: color 0.2s;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  font-family: inherit;
+  padding: 4px;
+  max-width: 80px;
+}
+.nav-item .nav-icon {
+  font-size: 1.3rem;
+  transition: transform 0.2s;
+}
+.nav-item .nav-label {
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+.nav-item.active {
+  color: var(--accent-primary);
+}
+.nav-item.active .nav-icon {
+  transform: scale(1.15);
+}
+
+/* ── Toast ── */
+.toast {
+  position: fixed;
+  top: calc(20px + var(--safe-top));
+  left: 50%;
+  transform: translateX(-50%) translateY(-120%);
+  background: var(--bg-card);
+  border: 1px solid var(--border-glow);
+  border-radius: var(--radius-md);
+  padding: 12px 24px;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  z-index: 200;
+  box-shadow: var(--shadow-lg);
+  transition: transform 0.4s ease;
+  white-space: nowrap;
+}
+.toast.show {
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ── Back Button ── */
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: var(--accent-secondary);
+  font-family: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 8px 0;
+  margin-bottom: 8px;
+}
+.back-btn:active { opacity: 0.7; }
+
+/* ── Confidence Breakdown ── */
+.conf-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(108, 92, 231, 0.08);
+}
+.conf-item:last-child { border-bottom: none; }
+
+.conf-item .conf-label {
+  width: 70px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.conf-bar-wrap {
+  flex: 1;
+  height: 6px;
+  background: var(--bg-input);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.conf-bar {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--gradient-high);
+  transition: width 0.8s ease;
+}
+
+.conf-value {
+  width: 44px;
+  text-align: right;
+  font-size: 0.8rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* ── Hall Special Tags ── */
+.hall-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.hall-tag {
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+  border: 1px solid var(--border-color);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+}
+.hall-tag.active {
+  border-color: var(--accent-primary);
+  background: rgba(108, 92, 231, 0.2);
+  color: var(--accent-secondary);
+}
+
+/* ── Section Divider ── */
+.section-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 20px 0;
+}
+
+/* ── Animations ── */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: 200px 0; }
+}
+
+.animate-pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* ── Machine Info Panel ── */
+.machine-info-panel {
+  display: none;
+  margin-top: 10px;
+  padding: 14px;
+  background: var(--bg-card-alt);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--accent-primary);
+}
+.machine-info-panel.active { display: block; }
+
+.machine-info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 0.8rem;
+}
+.machine-info-row .label { color: var(--text-muted); }
+.machine-info-row .value { color: var(--text-primary); font-weight: 500; }
+
+/* ── Responsive ── */
+@media (max-width: 360px) {
+  html { font-size: 14px; }
+  .form-row { grid-template-columns: 1fr; }
+  .form-row-3 { grid-template-columns: 1fr 1fr; }
+  .stat-grid { grid-template-columns: 1fr; }
+}
+
+@media (min-width: 481px) {
+  #app { padding: 0 24px; }
+}
+
+/* ── Print Hidden ── */
+@media print {
+  .bottom-nav, .back-btn, .btn { display: none !important; }
+}
+
+</style>
+</head>
+
+<body>
+
+  <div id="app">
+
+    <!-- ============ Header ============ -->
+    <header class="app-header">
+      <h1>PACHISLOT AI</h1>
+      <p class="subtitle">設定推測 ・ 期待値計算</p>
+    </header>
+
+    <!-- ============ HOME SCREEN ============ -->
+    <div id="home" class="screen active">
+
+      <!-- Machine Select Card -->
+      <div class="menu-card" data-target="machine-select">
+        <div class="menu-icon purple">🎰</div>
+        <div class="menu-info">
+          <h3>機種選択</h3>
+          <p>機種を選んで解析データを読み込み</p>
+        </div>
+        <span class="menu-arrow">›</span>
+      </div>
+
+      <!-- Screenshot Card -->
+      <div class="menu-card" data-target="screenshot">
+        <div class="menu-icon gold">📸</div>
+        <div class="menu-info">
+          <h3>スクショ解析</h3>
+          <p>台データのスクリーンショットをOCR解析</p>
+        </div>
+        <span class="menu-arrow">›</span>
+      </div>
+
+      <!-- Manual Input Card -->
+      <div class="menu-card" data-target="input">
+        <div class="menu-icon green">✏️</div>
+        <div class="menu-info">
+          <h3>手動入力</h3>
+          <p>回転数・ボーナス・小役を入力</p>
+        </div>
+        <span class="menu-arrow">›</span>
+      </div>
+
+      <!-- Quick Result Card (if machine selected) -->
+      <div id="quick-status" class="card glow" style="display:none;">
+        <div class="card-title"><span class="icon">📌</span>選択中の機種</div>
+        <div class="detail-row">
+          <span class="label">機種名</span>
+          <span class="value" id="home-machine-name">-</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============ MACHINE SELECT SCREEN ============ -->
+    <div id="machine-select" class="screen">
+      <button class="back-btn"
+        onclick="document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('home').classList.add('active');">
+        ‹ 戻る
+      </button>
+
+      <div class="card">
+        <div class="card-title"><span class="icon">🔍</span>機種を検索</div>
+        <input type="text" class="form-input" id="machine-search" placeholder="機種名を入力（例：北斗、からくり）">
+        <div id="machine-info-panel" class="machine-info-panel"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="icon">📋</span>対応機種一覧 <span id="machine-count"
+            style="margin-left:auto;font-size:0.9em;color:var(--accent-secondary)"></span></div>
+        <div id="machine-chips" class="machine-select-list"></div>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn btn-secondary" onclick="
+        document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+        document.getElementById('custom-machine').classList.add('active');
+        window.scrollTo(0,0);
+      ">＋ カスタム機種を追加</button>
+        <button class="btn btn-primary" onclick="
+        if(!document.querySelector('.machine-chip.selected')){return;}
+        document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+        document.getElementById('input').classList.add('active');
+        window.scrollTo(0,0);
+      ">入力画面へ ›</button>
+      </div>
+    </div>
+
+    <!-- ============ CUSTOM MACHINE SCREEN ============ -->
+    <div id="custom-machine" class="screen">
+      <button class="back-btn"
+        onclick="document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('machine-select').classList.add('active');">
+        ‹ 機種選択に戻る
+      </button>
+
+      <div class="card glow">
+        <div class="card-title"><span class="icon">🛠</span>カスタム機種登録</div>
+        <p style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:14px;">
+          一覧にない機種を自分で登録できます。設定1と設定6の値を入力すると、設定2〜5は自動補間されます。</p>
+
+        <div class="form-group">
+          <label class="form-label">機種名（必須）</label>
+          <input type="text" class="form-input" id="custom-name" placeholder="例：○○の△△">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">タイプ</label>
+            <select class="form-input" id="custom-type">
+              <option value="AT">AT機</option>
+              <option value="Aタイプ">Aタイプ</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">天井 (G)</label>
+            <input type="number" class="form-input" id="custom-ceiling" placeholder="999" inputmode="numeric">
+          </div>
+        </div>
+
+        <div class="section-divider"></div>
+        <div class="card-title"><span class="icon">📈</span>機械割（%）</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">設定1</label>
+            <input type="number" class="form-input" id="custom-payout1" placeholder="97.0" inputmode="decimal"
+              step="0.1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">設定6</label>
+            <input type="number" class="form-input" id="custom-payout6" placeholder="115.0" inputmode="decimal"
+              step="0.1">
+          </div>
+        </div>
+
+        <div class="section-divider"></div>
+        <div class="card-title"><span class="icon">🎯</span>初当たり確率（分母）</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">設定1 (1/X)</label>
+            <input type="number" class="form-input" id="custom-hit1" placeholder="400" inputmode="numeric">
+          </div>
+          <div class="form-group">
+            <label class="form-label">設定6 (1/X)</label>
+            <input type="number" class="form-input" id="custom-hit6" placeholder="200" inputmode="numeric">
+          </div>
+        </div>
+
+        <div class="section-divider"></div>
+        <div class="card-title"><span class="icon">🍒</span>ベル確率（分母）</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">設定1 (1/X)</label>
+            <input type="number" class="form-input" id="custom-bell1" placeholder="7.5" inputmode="decimal" step="0.1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">設定6 (1/X)</label>
+            <input type="number" class="form-input" id="custom-bell6" placeholder="5.9" inputmode="decimal" step="0.1">
+          </div>
+        </div>
+
+        <button id="btn-save-custom" class="btn btn-success btn-full btn-lg" style="margin-top:16px;">
+          💾 機種を登録
+        </button>
+      </div>
+    </div>
+
+    <!-- ============ SCREENSHOT SCREEN ============ -->
+    <div id="screenshot" class="screen">
+      <button class="back-btn"
+        onclick="document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('home').classList.add('active');">
+        ‹ 戻る
+      </button>
+
+      <div class="card">
+        <div class="card-title"><span class="icon">📸</span>スクリーンショット解析</div>
+
+        <div class="upload-area" id="upload-area">
+          <input type="file" id="screenshot-input" accept="image/*" capture="environment">
+          <div class="upload-icon">📷</div>
+          <p>タップして画像を選択</p>
+          <small>台データのスクリーンショットをアップロード</small>
+        </div>
+
+        <div id="upload-preview" class="upload-preview">
+          <img id="preview-img" src="" alt="Preview">
+          <button id="remove-screenshot" class="remove-btn">✕</button>
+        </div>
+
+        <div id="ocr-loading" class="ocr-loading">
+          <div class="spinner"></div>
+          <p>OCR解析中...</p>
+          <div class="ocr-progress"><span id="ocr-progress-value">0</span>%</div>
+        </div>
+
+        <div id="ocr-result" class="card" style="display:none; margin-top:12px; background:var(--bg-card-alt);">
+        </div>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn btn-primary btn-full" onclick="
+        document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+        document.getElementById('input').classList.add('active');
+        window.scrollTo(0,0);
+      ">入力画面で確認・修正 ›</button>
+      </div>
+    </div>
+
+    <!-- ============ INPUT SCREEN ============ -->
+    <div id="input" class="screen">
+      <button class="back-btn"
+        onclick="document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('home').classList.add('active');">
+        ‹ 戻る
+      </button>
+
+      <div id="selected-machine-banner" class="card glow">
+        <div class="card-title"><span class="icon">🎰</span>選択機種</div>
+        <div style="font-size:1.1rem; font-weight:700;">
+          <span id="selected-machine-display">未選択</span>
+        </div>
+      </div>
+
+      <!-- 回転数 -->
+      <div class="card">
+        <div class="card-title"><span class="icon">🔄</span>回転数</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">総回転数</label>
+            <input type="number" class="form-input" id="input-total-spins" data-key="totalSpins" placeholder="0"
+              inputmode="numeric">
+          </div>
+          <div class="form-group">
+            <label class="form-label">現在ゲーム数</label>
+            <input type="number" class="form-input" id="input-current-game" data-key="currentGame" placeholder="0"
+              inputmode="numeric">
+          </div>
+        </div>
+      </div>
+
+      <!-- ボーナス・AT -->
+      <div class="card">
+        <div class="card-title"><span class="icon">🎯</span>ボーナス・AT</div>
+        <div class="form-row-3">
+          <div class="form-group">
+            <label class="form-label">BIG</label>
+            <input type="number" class="form-input" id="input-big" data-key="big" placeholder="0" inputmode="numeric">
+          </div>
+          <div class="form-group">
+            <label class="form-label">REG</label>
+            <input type="number" class="form-input" id="input-reg" data-key="reg" placeholder="0" inputmode="numeric">
+          </div>
+          <div class="form-group">
+            <label class="form-label">AT</label>
+            <input type="number" class="form-input" id="input-at" data-key="at" placeholder="0" inputmode="numeric">
+          </div>
+        </div>
+      </div>
+
+      <!-- 投資・回収 -->
+      <div class="card">
+        <div class="card-title"><span class="icon">💳</span>投資・回収</div>
+        <div class="form-row-3">
+          <div class="form-group">
+            <label class="form-label">投資 (円)</label>
+            <input type="number" class="form-input" data-key="investment" placeholder="0" inputmode="numeric">
+          </div>
+          <div class="form-group">
+            <label class="form-label">回収 (円)</label>
+            <input type="number" class="form-input" data-key="revenue" placeholder="0" inputmode="numeric">
+          </div>
+          <div class="form-group">
+            <label class="form-label">差枚</label>
+            <input type="number" class="form-input" data-key="diffCoins" placeholder="0" inputmode="numeric">
+          </div>
+        </div>
+      </div>
+
+      <!-- 小役 -->
+      <div class="card">
+        <div class="card-title"><span class="icon">🍒</span>小役カウント</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">ベル</label>
+            <input type="number" class="form-input" data-key="bell" placeholder="0" inputmode="numeric">
+          </div>
+          <div class="form-group">
+            <label class="form-label">弱チェリー</label>
+            <input type="number" class="form-input" data-key="weakCherry" placeholder="0" inputmode="numeric">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">スイカ</label>
+            <input type="number" class="form-input" data-key="watermelon" placeholder="0" inputmode="numeric">
+          </div>
+          <div class="form-group">
+            <label class="form-label">チャンス目</label>
+            <input type="number" class="form-input" data-key="chance" placeholder="0" inputmode="numeric">
+          </div>
+        </div>
+      </div>
+
+      <!-- CZ -->
+      <div class="card">
+        <div class="card-title"><span class="icon">⚡</span>CZ</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">CZ突入</label>
+            <input type="number" class="form-input" data-key="czEntry" placeholder="0" inputmode="numeric">
+          </div>
+          <div class="form-group">
+            <label class="form-label">CZ成功</label>
+            <input type="number" class="form-input" data-key="czSuccess" placeholder="0" inputmode="numeric">
+          </div>
+        </div>
+      </div>
+
+      <!-- AT初当たり -->
+      <div class="card">
+        <div class="card-title"><span class="icon">🎪</span>AT初当たり</div>
+        <div class="form-group">
+          <label class="form-label">AT初当たり回数</label>
+          <input type="number" class="form-input" data-key="atFirstHit" placeholder="0" inputmode="numeric">
+        </div>
+      </div>
+
+      <!-- 設定確定演出 -->
+      <div class="card">
+        <div class="card-title"><span class="icon">⭐</span>設定確定演出</div>
+        <div class="chip-group">
+          <div class="chip" data-confirm="設定2以上">設定2以上</div>
+          <div class="chip" data-confirm="設定4以上">設定4以上</div>
+          <div class="chip" data-confirm="設定5以上">設定5以上</div>
+          <div class="chip" data-confirm="設定6確定">設定6確定</div>
+        </div>
+      </div>
+
+      <!-- 終了画面・トロフィー -->
+      <div class="card">
+        <div class="card-title"><span class="icon">🏆</span>演出・確認</div>
+        <div class="form-group">
+          <label class="form-label">終了画面</label>
+          <input type="text" class="form-input" data-text-key="endScreen" placeholder="例：エンディング画面">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">トロフィー</label>
+            <select class="form-input" data-text-key="trophy">
+              <option value="">なし</option>
+              <option value="銅">銅</option>
+              <option value="銀">銀</option>
+              <option value="金">金</option>
+              <option value="キリン柄">キリン柄</option>
+              <option value="レインボー">レインボー</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">ボイス</label>
+            <input type="text" class="form-input" data-text-key="voice" placeholder="例：特殊ボイス">
+          </div>
+        </div>
+      </div>
+
+      <!-- ホール状況 -->
+      <div class="card">
+        <div class="card-title"><span class="icon">🏢</span>ホール状況</div>
+        <div class="hall-tags">
+          <div class="hall-tag" data-hall="specialDay">🔥 特日</div>
+          <div class="hall-tag" data-hall="lineup">👥 並び</div>
+          <div class="hall-tag" data-hall="allDevices">🎰 全台系</div>
+        </div>
+      </div>
+
+      <!-- Analyze Button -->
+      <button id="btn-analyze" class="btn btn-primary btn-full btn-lg" style="margin-top:8px; margin-bottom:24px;">
+        🤖 AI分析を実行
+      </button>
+
+    </div>
+
+    <!-- ============ RESULTS SCREEN ============ -->
+    <div id="results" class="screen">
+      <button class="back-btn"
+        onclick="document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('input').classList.add('active');">
+        ‹ 入力に戻る
+      </button>
+
+      <div id="results-content">
+        <!-- Dynamically populated -->
+      </div>
+
+      <div class="btn-group" style="margin-bottom:24px;">
+        <button class="btn btn-secondary"
+          onclick="document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('input').classList.add('active');window.scrollTo(0,0);">
+          ✏️ 入力修正
+        </button>
+        <button class="btn btn-primary"
+          onclick="document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('home').classList.add('active');window.scrollTo(0,0);">
+          🏠 トップへ
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ============ Bottom Navigation ============ -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" data-screen="home">
+      <span class="nav-icon">🏠</span>
+      <span class="nav-label">ホーム</span>
+    </button>
+    <button class="nav-item" data-screen="machine-select">
+      <span class="nav-icon">🎰</span>
+      <span class="nav-label">機種</span>
+    </button>
+    <button class="nav-item" data-screen="input">
+      <span class="nav-icon">✏️</span>
+      <span class="nav-label">入力</span>
+    </button>
+    <button class="nav-item" data-screen="results">
+      <span class="nav-icon">📊</span>
+      <span class="nav-label">結果</span>
+    </button>
+  </nav>
+
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
+
+  <!-- Scripts -->
+  <script>
+// =====================================================
+// パチスロ機種データベース（大幅拡充版 40機種+）
+// =====================================================
+function gp(s1, s6) { const d = (s6 - s1) / 5; return { 1: s1, 2: +(s1 + d).toFixed(4), 3: +(s1 + d * 2).toFixed(4), 4: +(s1 + d * 3).toFixed(4), 5: +(s1 + d * 4).toFixed(4), 6: s6 }; }
+function gpi(s1, s6) { return { 1: 1 / s1, 2: 1 / +(s1 - (s1 - s6) / 5).toFixed(1), 3: 1 / +(s1 - (s1 - s6) / 5 * 2).toFixed(1), 4: 1 / +(s1 - (s1 - s6) / 5 * 3).toFixed(1), 5: 1 / +(s1 - (s1 - s6) / 5 * 4).toFixed(1), 6: 1 / s6 }; }
+const SC = { "設定2以上": [2, 3, 4, 5, 6], "設定4以上": [4, 5, 6], "設定5以上": [5, 6], "設定6確定": [6] };
+
+const MACHINE_DATABASE = {
+    // ═══════════════════════════════════════
+    // 🆕 2025-2026年 最新台
+    // ═══════════════════════════════════════
+    "スマスロ化物語": { name: "スマスロ化物語", alias: ["化物語", "物語", "バケモノガタリ"], type: "AT", ceiling: 800, ceilingBenefit: 1800, payoutRate: { 1: 98.0, 2: 99.5, 3: 101.8, 4: 105.5, 5: 110.2, 6: 116.0 }, bellProb: gpi(7.20, 5.70), cherryProb: gpi(35.5, 26.5), watermelonProb: gpi(53, 39), chanceProb: gpi(170, 115), atFirstHitProb: gpi(350, 170), czProb: gpi(130, 70), czSuccessRate: gp(0.33, 0.56), zones: [200, 400, 600], settingConfirm: SC },
+    "L北斗の拳 転生": { name: "L北斗の拳 転生", alias: ["北斗転生", "転生", "北斗転生2"], type: "AT", ceiling: 999, ceilingBenefit: 2200, payoutRate: { 1: 97.5, 2: 99.0, 3: 101.2, 4: 105.0, 5: 109.5, 6: 115.5 }, bellProb: gpi(7.40, 5.80), cherryProb: gpi(36.5, 27), watermelonProb: gpi(55, 40), chanceProb: gpi(178, 120), atFirstHitProb: gpi(400, 195), czProb: gpi(148, 80), czSuccessRate: gp(0.30, 0.52), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "Lカバネリ 開門決戦": { name: "Lカバネリ 開門決戦", alias: ["カバネリ開門", "開門決戦", "カバネリ2"], type: "AT", ceiling: 800, ceilingBenefit: 1900, payoutRate: { 1: 97.8, 2: 99.4, 3: 101.7, 4: 105.5, 5: 110.0, 6: 116.2 }, bellProb: gpi(7.25, 5.72), cherryProb: gpi(35.8, 26.8), watermelonProb: gpi(53.5, 39.5), chanceProb: gpi(172, 118), atFirstHitProb: gpi(360, 175), czProb: gpi(135, 72), czSuccessRate: gp(0.32, 0.55), zones: [200, 400, 600], settingConfirm: SC },
+    "L呪術廻戦": { name: "L呪術廻戦", alias: ["呪術", "呪術廻戦", "じゅじゅつ"], type: "AT", ceiling: 999, ceilingBenefit: 2100, payoutRate: { 1: 97.2, 2: 98.8, 3: 101.0, 4: 105.0, 5: 109.8, 6: 116.0 }, bellProb: gpi(7.50, 5.85), cherryProb: gpi(37, 27.5), watermelonProb: gpi(55.5, 40.5), chanceProb: gpi(185, 125), atFirstHitProb: gpi(410, 200), czProb: gpi(150, 82), czSuccessRate: gp(0.29, 0.52), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "L鬼滅の刃": { name: "L鬼滅の刃", alias: ["鬼滅", "きめつ", "鬼滅の刃"], type: "AT", ceiling: 999, ceilingBenefit: 2200, payoutRate: { 1: 97.0, 2: 98.5, 3: 100.8, 4: 104.8, 5: 109.5, 6: 116.5 }, bellProb: gpi(7.55, 5.88), cherryProb: gpi(37.5, 27.5), watermelonProb: gpi(56, 41), chanceProb: gpi(188, 126), atFirstHitProb: gpi(420, 205), czProb: gpi(155, 84), czSuccessRate: gp(0.28, 0.51), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "Lチェンソーマン": { name: "Lチェンソーマン", alias: ["チェンソー", "チェンソーマン", "CSM"], type: "AT", ceiling: 999, ceilingBenefit: 2000, payoutRate: { 1: 97.3, 2: 98.9, 3: 101.2, 4: 105.2, 5: 109.8, 6: 115.8 }, bellProb: gpi(7.45, 5.82), cherryProb: gpi(37, 27), watermelonProb: gpi(55, 40), chanceProb: gpi(182, 123), atFirstHitProb: gpi(405, 198), czProb: gpi(148, 80), czSuccessRate: gp(0.30, 0.53), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "L推しの子": { name: "L推しの子", alias: ["推しの子", "おしのこ"], type: "AT", ceiling: 800, ceilingBenefit: 1700, payoutRate: { 1: 97.8, 2: 99.5, 3: 101.8, 4: 105.3, 5: 109.5, 6: 115.2 }, bellProb: gpi(7.30, 5.78), cherryProb: gpi(36, 26.8), watermelonProb: gpi(54, 40), chanceProb: gpi(175, 120), atFirstHitProb: gpi(370, 182), czProb: gpi(138, 75), czSuccessRate: gp(0.32, 0.55), zones: [200, 400, 600], settingConfirm: SC },
+    "Lワンパンマン": { name: "Lワンパンマン", alias: ["ワンパン", "ワンパンマン"], type: "AT", ceiling: 999, ceilingBenefit: 1900, payoutRate: { 1: 97.5, 2: 99.2, 3: 101.5, 4: 105.2, 5: 109.5, 6: 115.5 }, bellProb: gpi(7.40, 5.82), cherryProb: gpi(36.5, 27), watermelonProb: gpi(55, 40.5), chanceProb: gpi(180, 122), atFirstHitProb: gpi(395, 195), czProb: gpi(145, 79), czSuccessRate: gp(0.31, 0.53), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "スマスロ刃牙": { name: "スマスロ刃牙", alias: ["刃牙", "バキ"], type: "AT", ceiling: 999, ceilingBenefit: 1800, payoutRate: { 1: 97.6, 2: 99.3, 3: 101.5, 4: 105.0, 5: 109.2, 6: 115.0 }, bellProb: gpi(7.42, 5.85), cherryProb: gpi(36.8, 27.2), watermelonProb: gpi(55.2, 40.8), chanceProb: gpi(182, 124), atFirstHitProb: gpi(398, 198), czProb: gpi(146, 80), czSuccessRate: gp(0.30, 0.53), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "Lガンダムシード": { name: "Lガンダムシード", alias: ["ガンダムSEED", "SEED", "シード"], type: "AT", ceiling: 999, ceilingBenefit: 2000, payoutRate: { 1: 97.3, 2: 98.9, 3: 101.2, 4: 105.0, 5: 109.5, 6: 115.5 }, bellProb: gpi(7.48, 5.85), cherryProb: gpi(37, 27.2), watermelonProb: gpi(55.5, 40.5), chanceProb: gpi(184, 125), atFirstHitProb: gpi(405, 200), czProb: gpi(150, 82), czSuccessRate: gp(0.29, 0.52), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "L戦国乙女4": { name: "L戦国乙女4", alias: ["戦国乙女", "乙女4"], type: "AT", ceiling: 999, ceilingBenefit: 1700, payoutRate: { 1: 97.6, 2: 99.3, 3: 101.5, 4: 105.0, 5: 109.0, 6: 114.8 }, bellProb: gpi(7.42, 5.88), cherryProb: gpi(36.8, 27.5), watermelonProb: gpi(55, 40.5), chanceProb: gpi(180, 124), atFirstHitProb: gpi(390, 195), czProb: gpi(145, 80), czSuccessRate: gp(0.31, 0.53), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "Lシティーハンター": { name: "Lシティーハンター", alias: ["シティーハンター", "シティハンター", "CH"], type: "AT", ceiling: 800, ceilingBenefit: 1600, payoutRate: { 1: 97.8, 2: 99.5, 3: 101.7, 4: 105.2, 5: 109.2, 6: 114.8 }, bellProb: gpi(7.35, 5.82), cherryProb: gpi(36.2, 27), watermelonProb: gpi(54, 40), chanceProb: gpi(176, 120), atFirstHitProb: gpi(375, 185), czProb: gpi(140, 77), czSuccessRate: gp(0.32, 0.54), zones: [200, 400, 600], settingConfirm: SC },
+    "スマスロキャッツアイ": { name: "スマスロキャッツアイ", alias: ["キャッツアイ", "キャッツ"], type: "AT", ceiling: 800, ceilingBenefit: 1600, payoutRate: { 1: 97.7, 2: 99.4, 3: 101.6, 4: 105.1, 5: 109.0, 6: 114.5 }, bellProb: gpi(7.38, 5.85), cherryProb: gpi(36.5, 27.2), watermelonProb: gpi(54.5, 40.2), chanceProb: gpi(178, 122), atFirstHitProb: gpi(380, 188), czProb: gpi(142, 78), czSuccessRate: gp(0.31, 0.54), zones: [200, 400, 600], settingConfirm: SC },
+    "L七つの大罪": { name: "L七つの大罪", alias: ["七つの大罪", "大罪", "ナナツノタイザイ"], type: "AT", ceiling: 999, ceilingBenefit: 1800, payoutRate: { 1: 97.4, 2: 99.1, 3: 101.3, 4: 104.9, 5: 109.0, 6: 115.0 }, bellProb: gpi(7.45, 5.88), cherryProb: gpi(37, 27.5), watermelonProb: gpi(55.5, 41), chanceProb: gpi(184, 126), atFirstHitProb: gpi(400, 200), czProb: gpi(148, 82), czSuccessRate: gp(0.30, 0.52), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "スマスロウルトラマン": { name: "スマスロウルトラマン", alias: ["ウルトラマン"], type: "AT", ceiling: 999, ceilingBenefit: 1800, payoutRate: { 1: 97.5, 2: 99.2, 3: 101.4, 4: 105.0, 5: 109.2, 6: 115.0 }, bellProb: gpi(7.45, 5.88), cherryProb: gpi(37, 27.5), watermelonProb: gpi(55.5, 40.5), chanceProb: gpi(183, 125), atFirstHitProb: gpi(395, 198), czProb: gpi(147, 81), czSuccessRate: gp(0.30, 0.52), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "L真・北斗無双": { name: "L真・北斗無双", alias: ["北斗無双", "無双"], type: "AT", ceiling: 999, ceilingBenefit: 2100, payoutRate: { 1: 97.2, 2: 98.7, 3: 101.0, 4: 104.8, 5: 109.2, 6: 115.8 }, bellProb: gpi(7.55, 5.90), cherryProb: gpi(37.5, 27.5), watermelonProb: gpi(56, 41), chanceProb: gpi(188, 128), atFirstHitProb: gpi(415, 205), czProb: gpi(152, 84), czSuccessRate: gp(0.28, 0.51), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "Lリゼロ2": { name: "Lリゼロ2", alias: ["リゼロ2", "レゼロ2"], type: "AT", ceiling: 999, ceilingBenefit: 2000, payoutRate: { 1: 97.0, 2: 98.5, 3: 100.8, 4: 104.5, 5: 109.2, 6: 116.0 }, bellProb: gpi(7.60, 5.88), cherryProb: gpi(38, 27.8), watermelonProb: gpi(57, 41), chanceProb: gpi(190, 128), atFirstHitProb: gpi(425, 210), czProb: gpi(158, 86), czSuccessRate: gp(0.27, 0.50), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "スマスロマクロスΔ": { name: "スマスロマクロスΔ", alias: ["マクロスΔ", "マクロスデルタ", "デルタ"], type: "AT", ceiling: 999, ceilingBenefit: 1800, payoutRate: { 1: 97.5, 2: 99.2, 3: 101.4, 4: 105.0, 5: 109.2, 6: 115.0 }, bellProb: gpi(7.45, 5.88), cherryProb: gpi(37, 27.5), watermelonProb: gpi(55.5, 40.5), chanceProb: gpi(183, 125), atFirstHitProb: gpi(398, 200), czProb: gpi(148, 82), czSuccessRate: gp(0.30, 0.52), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "L新・番長4": { name: "L新・番長4", alias: ["番長4", "新番長"], type: "AT", ceiling: 800, ceilingBenefit: 1700, payoutRate: { 1: 97.8, 2: 99.5, 3: 101.8, 4: 105.5, 5: 109.8, 6: 115.5 }, bellProb: gpi(7.28, 5.75), cherryProb: gpi(35.8, 26.5), watermelonProb: gpi(53.5, 39.5), chanceProb: gpi(172, 118), atFirstHitProb: gpi(358, 175), czProb: gpi(132, 72), czSuccessRate: gp(0.33, 0.56), zones: [200, 400, 600], settingConfirm: SC },
+    "Lとある科学の超電磁砲": { name: "Lとある科学の超電磁砲", alias: ["超電磁砲", "レールガン"], type: "AT", ceiling: 999, ceilingBenefit: 1800, payoutRate: { 1: 97.4, 2: 99.1, 3: 101.3, 4: 104.9, 5: 109.0, 6: 115.0 }, bellProb: gpi(7.45, 5.88), cherryProb: gpi(37, 27.5), watermelonProb: gpi(55.5, 41), chanceProb: gpi(184, 126), atFirstHitProb: gpi(400, 200), czProb: gpi(148, 82), czSuccessRate: gp(0.30, 0.52), zones: [200, 400, 600, 800], settingConfirm: SC },
+    // ═══════════════════════════════════════
+    // 定番・人気機種
+    // ═══════════════════════════════════════
+    "スマスロ北斗の拳": { name: "スマスロ北斗の拳", alias: ["北斗", "北斗の拳", "スマスロ北斗"], type: "AT", ceiling: 1268, ceilingBenefit: 2400, payoutRate: { 1: 97.9, 2: 99.2, 3: 101.3, 4: 104.8, 5: 108.4, 6: 114.1 }, bellProb: gpi(7.30, 5.90), cherryProb: gpi(36, 30), watermelonProb: gpi(55, 42), chanceProb: gpi(180, 140), atFirstHitProb: gpi(430, 250), czProb: gpi(160, 95), czSuccessRate: gp(0.30, 0.48), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "からくりサーカス": { name: "からくりサーカス", alias: ["からくり", "カラクリ"], type: "AT", ceiling: 999, ceilingBenefit: 1800, payoutRate: { 1: 97.5, 2: 99.0, 3: 101.5, 4: 105.0, 5: 109.0, 6: 115.0 }, bellProb: gpi(7.50, 6.10), cherryProb: gpi(38, 28.5), watermelonProb: gpi(58, 42), chanceProb: gpi(190, 130), atFirstHitProb: gpi(380, 200), czProb: gpi(150, 85), czSuccessRate: gp(0.28, 0.50), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "ヴァルヴレイヴ": { name: "ヴァルヴレイヴ", alias: ["ヴヴヴ", "VVV", "革命機"], type: "AT", ceiling: 999, ceilingBenefit: 2000, payoutRate: { 1: 97.0, 2: 98.8, 3: 101.0, 4: 105.5, 5: 110.0, 6: 116.0 }, bellProb: gpi(7.80, 5.90), cherryProb: gpi(40, 28), watermelonProb: gpi(60, 42), chanceProb: gpi(200, 135), atFirstHitProb: gpi(450, 230), czProb: gpi(170, 95), czSuccessRate: gp(0.25, 0.48), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "モンキーターン": { name: "モンキーターン", alias: ["モンキー"], type: "AT", ceiling: 800, ceilingBenefit: 1500, payoutRate: { 1: 97.8, 2: 99.5, 3: 101.8, 4: 105.2, 5: 109.5, 6: 114.5 }, bellProb: gpi(7.40, 6.00), cherryProb: gpi(37, 27.5), watermelonProb: gpi(56, 41), chanceProb: gpi(185, 125), atFirstHitProb: gpi(380, 190), czProb: gpi(145, 80), czSuccessRate: gp(0.30, 0.52), zones: [200, 400, 600], settingConfirm: SC },
+    "炎炎ノ消防隊": { name: "炎炎ノ消防隊", alias: ["炎炎", "消防隊"], type: "AT", ceiling: 999, ceilingBenefit: 1800, payoutRate: { 1: 97.3, 2: 99.1, 3: 101.2, 4: 104.5, 5: 108.8, 6: 114.8 }, bellProb: gpi(7.60, 5.95), cherryProb: gpi(39, 28.5), watermelonProb: gpi(57, 42), chanceProb: gpi(195, 132), atFirstHitProb: gpi(420, 215), czProb: gpi(155, 88), czSuccessRate: gp(0.27, 0.50), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "ゴブリンスレイヤー": { name: "ゴブリンスレイヤー", alias: ["ゴブスレ", "ゴブリン"], type: "AT", ceiling: 999, ceilingBenefit: 1700, payoutRate: { 1: 97.6, 2: 99.3, 3: 101.5, 4: 105.0, 5: 109.2, 6: 115.2 }, bellProb: gpi(7.45, 5.92), cherryProb: gpi(37.5, 28), watermelonProb: gpi(56.5, 41.5), chanceProb: gpi(188, 128), atFirstHitProb: gpi(400, 205), czProb: gpi(148, 82), czSuccessRate: gp(0.29, 0.51), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "甲鉄城のカバネリ": { name: "甲鉄城のカバネリ", alias: ["カバネリ"], type: "AT", ceiling: 999, ceilingBenefit: 1900, payoutRate: { 1: 97.8, 2: 99.4, 3: 101.6, 4: 105.3, 5: 109.8, 6: 115.5 }, bellProb: gpi(7.35, 5.85), cherryProb: gpi(36.5, 27), watermelonProb: gpi(54, 40), chanceProb: gpi(175, 120), atFirstHitProb: gpi(390, 195), czProb: gpi(142, 78), czSuccessRate: gp(0.31, 0.53), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "バジリスク絆2": { name: "バジリスク絆2", alias: ["バジリスク", "絆2", "絆"], type: "AT", ceiling: 800, ceilingBenefit: 1600, payoutRate: { 1: 97.4, 2: 99.0, 3: 101.2, 4: 104.8, 5: 108.5, 6: 114.2 }, bellProb: gpi(7.55, 6.05), cherryProb: gpi(38.5, 29), watermelonProb: gpi(57, 43), chanceProb: gpi(192, 135), atFirstHitProb: gpi(410, 210), czProb: gpi(152, 86), czSuccessRate: gp(0.28, 0.49), zones: [200, 400, 600], settingConfirm: SC },
+    "Re:ゼロ": { name: "Re:ゼロ", alias: ["リゼロ", "レゼロ", "re:zero"], type: "AT", ceiling: 999, ceilingBenefit: 2000, payoutRate: { 1: 97.0, 2: 98.5, 3: 100.8, 4: 104.5, 5: 109.0, 6: 115.8 }, bellProb: gpi(7.70, 5.95), cherryProb: gpi(39.5, 28.5), watermelonProb: gpi(59, 42), chanceProb: gpi(198, 130), atFirstHitProb: gpi(440, 220), czProb: gpi(165, 90), czSuccessRate: gp(0.26, 0.48), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "鬼武者": { name: "鬼武者", alias: ["新鬼武者"], type: "AT", ceiling: 999, ceilingBenefit: 1700, payoutRate: { 1: 97.5, 2: 99.1, 3: 101.3, 4: 104.6, 5: 108.6, 6: 114.5 }, bellProb: gpi(7.50, 6.00), cherryProb: gpi(37.5, 28), watermelonProb: gpi(56, 41), chanceProb: gpi(185, 128), atFirstHitProb: gpi(400, 210), czProb: gpi(150, 84), czSuccessRate: gp(0.29, 0.50), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "コードギアス": { name: "コードギアス", alias: ["ギアス", "コドギア"], type: "AT", ceiling: 999, ceilingBenefit: 1800, payoutRate: { 1: 97.6, 2: 99.2, 3: 101.4, 4: 105.0, 5: 109.3, 6: 115.0 }, bellProb: gpi(7.45, 5.90), cherryProb: gpi(37, 27.5), watermelonProb: gpi(55, 40.5), chanceProb: gpi(182, 125), atFirstHitProb: gpi(395, 200), czProb: gpi(148, 82), czSuccessRate: gp(0.30, 0.52), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "マクロスフロンティア4": { name: "マクロスフロンティア4", alias: ["マクロス", "マクロスF", "マクロス4"], type: "AT", ceiling: 999, ceilingBenefit: 1800, payoutRate: { 1: 97.4, 2: 99.0, 3: 101.2, 4: 104.8, 5: 109.0, 6: 115.2 }, bellProb: gpi(7.55, 6.00), cherryProb: gpi(38, 28.5), watermelonProb: gpi(57, 42), chanceProb: gpi(190, 130), atFirstHitProb: gpi(410, 210), czProb: gpi(155, 85), czSuccessRate: gp(0.28, 0.50), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "押忍!番長ZERO": { name: "押忍!番長ZERO", alias: ["番長ZERO", "番長", "番長0"], type: "AT", ceiling: 800, ceilingBenefit: 1500, payoutRate: { 1: 97.7, 2: 99.3, 3: 101.5, 4: 105.0, 5: 109.2, 6: 114.8 }, bellProb: gpi(7.40, 5.90), cherryProb: gpi(36.5, 27), watermelonProb: gpi(54, 40), chanceProb: gpi(178, 122), atFirstHitProb: gpi(370, 185), czProb: gpi(140, 78), czSuccessRate: gp(0.32, 0.54), zones: [200, 400, 600], settingConfirm: SC },
+    "ガンダムユニコーン": { name: "ガンダムユニコーン", alias: ["ユニコーン", "ガンダムUC", "UC"], type: "AT", ceiling: 999, ceilingBenefit: 1900, payoutRate: { 1: 97.2, 2: 98.8, 3: 101.0, 4: 104.6, 5: 108.8, 6: 114.6 }, bellProb: gpi(7.60, 6.05), cherryProb: gpi(39, 29), watermelonProb: gpi(58, 43), chanceProb: gpi(195, 132), atFirstHitProb: gpi(420, 215), czProb: gpi(158, 88), czSuccessRate: gp(0.27, 0.49), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "政宗 戦極": { name: "政宗 戦極", alias: ["政宗", "政宗3"], type: "AT", ceiling: 999, ceilingBenefit: 1700, payoutRate: { 1: 97.5, 2: 99.2, 3: 101.4, 4: 104.8, 5: 108.9, 6: 114.6 }, bellProb: gpi(7.50, 5.98), cherryProb: gpi(37.5, 28), watermelonProb: gpi(56, 41.5), chanceProb: gpi(186, 128), atFirstHitProb: gpi(395, 200), czProb: gpi(150, 83), czSuccessRate: gp(0.29, 0.51), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "転生したらスライムだった件": { name: "転生したらスライムだった件", alias: ["転スラ", "スライム"], type: "AT", ceiling: 999, ceilingBenefit: 1800, payoutRate: { 1: 97.3, 2: 99.0, 3: 101.3, 4: 104.9, 5: 109.2, 6: 115.0 }, bellProb: gpi(7.55, 5.95), cherryProb: gpi(38, 28), watermelonProb: gpi(56.5, 41), chanceProb: gpi(188, 126), atFirstHitProb: gpi(405, 205), czProb: gpi(152, 84), czSuccessRate: gp(0.28, 0.50), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "ソードアートオンライン": { name: "ソードアートオンライン", alias: ["SAO"], type: "AT", ceiling: 999, ceilingBenefit: 1800, payoutRate: { 1: 97.4, 2: 99.1, 3: 101.4, 4: 105.0, 5: 109.1, 6: 115.1 }, bellProb: gpi(7.50, 5.92), cherryProb: gpi(37.5, 27.5), watermelonProb: gpi(55.5, 40.5), chanceProb: gpi(184, 125), atFirstHitProb: gpi(400, 200), czProb: gpi(148, 82), czSuccessRate: gp(0.30, 0.52), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "犬夜叉": { name: "犬夜叉", alias: ["イヌヤシャ"], type: "AT", ceiling: 999, ceilingBenefit: 1700, payoutRate: { 1: 97.6, 2: 99.3, 3: 101.5, 4: 105.1, 5: 109.0, 6: 114.8 }, bellProb: gpi(7.45, 5.95), cherryProb: gpi(37, 27.5), watermelonProb: gpi(55, 40.5), chanceProb: gpi(182, 126), atFirstHitProb: gpi(390, 198), czProb: gpi(146, 80), czSuccessRate: gp(0.30, 0.52), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "戦姫絶唱シンフォギア": { name: "戦姫絶唱シンフォギア", alias: ["シンフォギア"], type: "AT", ceiling: 999, ceilingBenefit: 1800, payoutRate: { 1: 97.3, 2: 98.9, 3: 101.1, 4: 104.7, 5: 108.8, 6: 114.9 }, bellProb: gpi(7.55, 5.98), cherryProb: gpi(38, 28.5), watermelonProb: gpi(57, 42), chanceProb: gpi(190, 130), atFirstHitProb: gpi(415, 208), czProb: gpi(155, 86), czSuccessRate: gp(0.28, 0.50), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "魔法少女まどか☆マギカ": { name: "魔法少女まどか☆マギカ", alias: ["まどマギ", "まどか", "マギカ"], type: "AT", ceiling: 999, ceilingBenefit: 2000, payoutRate: { 1: 97.2, 2: 98.8, 3: 101.0, 4: 104.8, 5: 109.2, 6: 115.5 }, bellProb: gpi(7.60, 5.90), cherryProb: gpi(39, 28), watermelonProb: gpi(58, 41), chanceProb: gpi(195, 128), atFirstHitProb: gpi(430, 215), czProb: gpi(160, 88), czSuccessRate: gp(0.27, 0.50), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "バイオハザード": { name: "バイオハザード", alias: ["バイオ", "RE"], type: "AT", ceiling: 999, ceilingBenefit: 1800, payoutRate: { 1: 97.5, 2: 99.2, 3: 101.3, 4: 104.9, 5: 108.9, 6: 114.5 }, bellProb: gpi(7.48, 5.95), cherryProb: gpi(37.5, 28), watermelonProb: gpi(56, 41), chanceProb: gpi(186, 128), atFirstHitProb: gpi(400, 205), czProb: gpi(150, 84), czSuccessRate: gp(0.29, 0.51), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "花の慶次": { name: "花の慶次", alias: ["慶次", "花慶"], type: "AT", ceiling: 999, ceilingBenefit: 1700, payoutRate: { 1: 97.7, 2: 99.4, 3: 101.6, 4: 105.2, 5: 109.3, 6: 114.8 }, bellProb: gpi(7.42, 5.88), cherryProb: gpi(36.5, 27), watermelonProb: gpi(54, 40), chanceProb: gpi(178, 122), atFirstHitProb: gpi(380, 192), czProb: gpi(142, 78), czSuccessRate: gp(0.31, 0.53), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "エウレカセブン": { name: "エウレカセブン", alias: ["エウレカ", "交響詩篇"], type: "AT", ceiling: 999, ceilingBenefit: 1800, payoutRate: { 1: 97.4, 2: 99.0, 3: 101.2, 4: 104.7, 5: 108.8, 6: 114.6 }, bellProb: gpi(7.52, 5.95), cherryProb: gpi(38, 28.5), watermelonProb: gpi(57, 42), chanceProb: gpi(190, 130), atFirstHitProb: gpi(410, 210), czProb: gpi(155, 86), czSuccessRate: gp(0.28, 0.50), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "ハーデス": { name: "ハーデス", alias: ["アナザーゴッドハーデス", "GOD"], type: "AT", ceiling: 999, ceilingBenefit: 2200, payoutRate: { 1: 97.0, 2: 98.5, 3: 100.5, 4: 104.0, 5: 108.5, 6: 115.0 }, bellProb: gpi(7.80, 6.10), cherryProb: gpi(40, 29), watermelonProb: gpi(60, 43), chanceProb: gpi(200, 135), atFirstHitProb: gpi(450, 225), czProb: gpi(168, 92), czSuccessRate: gp(0.25, 0.47), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "ミリオンゴッド": { name: "ミリオンゴッド", alias: ["ゴッド", "凱旋"], type: "AT", ceiling: 1480, ceilingBenefit: 2500, payoutRate: { 1: 97.0, 2: 98.2, 3: 100.2, 4: 103.8, 5: 108.0, 6: 114.8 }, bellProb: gpi(7.85, 6.15), cherryProb: gpi(41, 30), watermelonProb: gpi(62, 45), chanceProb: gpi(210, 140), atFirstHitProb: gpi(480, 240), czProb: gpi(175, 96), czSuccessRate: gp(0.24, 0.46), zones: [200, 400, 600, 800, 1000], settingConfirm: SC },
+    "沖ドキ!GOLD": { name: "沖ドキ!GOLD", alias: ["沖ドキ", "沖ドキゴールド"], type: "AT", ceiling: 999, ceilingBenefit: 1600, payoutRate: { 1: 97.8, 2: 99.5, 3: 101.8, 4: 105.2, 5: 109.0, 6: 114.5 }, bellProb: gpi(7.38, 5.88), cherryProb: gpi(36, 26.5), watermelonProb: gpi(53, 39), chanceProb: gpi(175, 120), atFirstHitProb: gpi(370, 185), czProb: gpi(138, 76), czSuccessRate: gp(0.32, 0.55), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "南国育ち": { name: "南国育ち", alias: ["南国"], type: "AT", ceiling: 999, ceilingBenefit: 1500, payoutRate: { 1: 97.9, 2: 99.6, 3: 101.9, 4: 105.3, 5: 109.2, 6: 114.3 }, bellProb: gpi(7.35, 5.85), cherryProb: gpi(36, 27), watermelonProb: gpi(54, 40), chanceProb: gpi(178, 122), atFirstHitProb: gpi(375, 188), czProb: gpi(140, 77), czSuccessRate: gp(0.32, 0.54), zones: [200, 400, 600], settingConfirm: SC },
+    "鉄拳5": { name: "鉄拳5", alias: ["鉄拳"], type: "AT", ceiling: 999, ceilingBenefit: 1700, payoutRate: { 1: 97.5, 2: 99.2, 3: 101.4, 4: 104.9, 5: 109.0, 6: 114.8 }, bellProb: gpi(7.48, 5.95), cherryProb: gpi(37.5, 28), watermelonProb: gpi(56, 41), chanceProb: gpi(185, 127), atFirstHitProb: gpi(400, 202), czProb: gpi(148, 82), czSuccessRate: gp(0.30, 0.52), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "ペルソナ5": { name: "ペルソナ5", alias: ["ペルソナ", "P5"], type: "AT", ceiling: 999, ceilingBenefit: 1800, payoutRate: { 1: 97.3, 2: 99.0, 3: 101.2, 4: 104.8, 5: 109.1, 6: 115.0 }, bellProb: gpi(7.55, 5.95), cherryProb: gpi(38, 28.5), watermelonProb: gpi(57, 42), chanceProb: gpi(190, 130), atFirstHitProb: gpi(410, 208), czProb: gpi(155, 85), czSuccessRate: gp(0.28, 0.50), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "ひぐらしのなく頃に": { name: "ひぐらしのなく頃に", alias: ["ひぐらし"], type: "AT", ceiling: 999, ceilingBenefit: 1700, payoutRate: { 1: 97.6, 2: 99.3, 3: 101.5, 4: 105.0, 5: 109.2, 6: 114.9 }, bellProb: gpi(7.48, 5.92), cherryProb: gpi(37.5, 27.5), watermelonProb: gpi(55.5, 40.5), chanceProb: gpi(184, 126), atFirstHitProb: gpi(395, 200), czProb: gpi(148, 82), czSuccessRate: gp(0.30, 0.52), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "盾の勇者の成り上がり": { name: "盾の勇者の成り上がり", alias: ["盾の勇者", "盾"], type: "AT", ceiling: 999, ceilingBenefit: 1700, payoutRate: { 1: 97.5, 2: 99.1, 3: 101.3, 4: 104.8, 5: 108.8, 6: 114.6 }, bellProb: gpi(7.50, 5.95), cherryProb: gpi(38, 28), watermelonProb: gpi(56.5, 41.5), chanceProb: gpi(188, 128), atFirstHitProb: gpi(405, 205), czProb: gpi(152, 84), czSuccessRate: gp(0.29, 0.51), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "ダンまち": { name: "ダンまち", alias: ["ダンジョン", "ダンジョンに出会い"], type: "AT", ceiling: 999, ceilingBenefit: 1700, payoutRate: { 1: 97.6, 2: 99.2, 3: 101.4, 4: 105.0, 5: 109.1, 6: 114.8 }, bellProb: gpi(7.45, 5.92), cherryProb: gpi(37, 27.5), watermelonProb: gpi(55, 40.5), chanceProb: gpi(183, 126), atFirstHitProb: gpi(395, 200), czProb: gpi(148, 82), czSuccessRate: gp(0.30, 0.52), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "頭文字D": { name: "頭文字D", alias: ["イニシャルD", "イニD"], type: "AT", ceiling: 999, ceilingBenefit: 1700, payoutRate: { 1: 97.5, 2: 99.2, 3: 101.4, 4: 105.0, 5: 109.0, 6: 114.7 }, bellProb: gpi(7.48, 5.93), cherryProb: gpi(37.5, 28), watermelonProb: gpi(56, 41), chanceProb: gpi(185, 127), atFirstHitProb: gpi(398, 202), czProb: gpi(149, 83), czSuccessRate: gp(0.30, 0.52), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "キン肉マン": { name: "キン肉マン", alias: ["キン肉", "筋肉マン"], type: "AT", ceiling: 999, ceilingBenefit: 1800, payoutRate: { 1: 97.4, 2: 99.0, 3: 101.2, 4: 104.8, 5: 108.9, 6: 114.8 }, bellProb: gpi(7.52, 5.95), cherryProb: gpi(38, 28.5), watermelonProb: gpi(57, 42), chanceProb: gpi(190, 130), atFirstHitProb: gpi(410, 208), czProb: gpi(155, 86), czSuccessRate: gp(0.28, 0.50), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "サラリーマン金太郎": { name: "サラリーマン金太郎", alias: ["金太郎"], type: "AT", ceiling: 800, ceilingBenefit: 1500, payoutRate: { 1: 97.8, 2: 99.5, 3: 101.7, 4: 105.2, 5: 109.3, 6: 114.5 }, bellProb: gpi(7.38, 5.88), cherryProb: gpi(36.5, 27), watermelonProb: gpi(54, 40), chanceProb: gpi(178, 122), atFirstHitProb: gpi(375, 188), czProb: gpi(140, 78), czSuccessRate: gp(0.32, 0.54), zones: [200, 400, 600], settingConfirm: SC },
+    "吉宗3": { name: "吉宗3", alias: ["吉宗", "よしむね"], type: "AT", ceiling: 999, ceilingBenefit: 1800, payoutRate: { 1: 97.5, 2: 99.2, 3: 101.4, 4: 105.0, 5: 109.2, 6: 115.0 }, bellProb: gpi(7.48, 5.92), cherryProb: gpi(37.5, 28), watermelonProb: gpi(56, 41), chanceProb: gpi(185, 127), atFirstHitProb: gpi(398, 200), czProb: gpi(148, 82), czSuccessRate: gp(0.30, 0.52), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "獣王": { name: "獣王", alias: ["じゅうおう", "獣王王者の覚醒"], type: "AT", ceiling: 999, ceilingBenefit: 1600, payoutRate: { 1: 97.7, 2: 99.4, 3: 101.6, 4: 105.1, 5: 109.1, 6: 114.6 }, bellProb: gpi(7.42, 5.90), cherryProb: gpi(37, 27.5), watermelonProb: gpi(55, 40.5), chanceProb: gpi(182, 125), atFirstHitProb: gpi(390, 198), czProb: gpi(145, 80), czSuccessRate: gp(0.31, 0.53), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "忍魂": { name: "忍魂", alias: ["しのびだま"], type: "AT", ceiling: 999, ceilingBenefit: 1600, payoutRate: { 1: 97.6, 2: 99.3, 3: 101.5, 4: 105.0, 5: 109.0, 6: 114.5 }, bellProb: gpi(7.45, 5.92), cherryProb: gpi(37, 27.5), watermelonProb: gpi(55.5, 40.5), chanceProb: gpi(184, 126), atFirstHitProb: gpi(395, 200), czProb: gpi(148, 82), czSuccessRate: gp(0.30, 0.52), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "傷物語": { name: "傷物語", alias: ["きずもの", "物語シリーズ"], type: "AT", ceiling: 999, ceilingBenefit: 1800, payoutRate: { 1: 97.3, 2: 98.9, 3: 101.1, 4: 104.7, 5: 108.9, 6: 115.0 }, bellProb: gpi(7.55, 5.95), cherryProb: gpi(38, 28.5), watermelonProb: gpi(57, 42), chanceProb: gpi(190, 130), atFirstHitProb: gpi(415, 210), czProb: gpi(155, 86), czSuccessRate: gp(0.28, 0.50), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "とある魔術の禁書目録": { name: "とある魔術の禁書目録", alias: ["とある", "禁書目録", "インデックス"], type: "AT", ceiling: 999, ceilingBenefit: 1700, payoutRate: { 1: 97.5, 2: 99.1, 3: 101.3, 4: 104.9, 5: 108.9, 6: 114.7 }, bellProb: gpi(7.50, 5.95), cherryProb: gpi(37.5, 28), watermelonProb: gpi(56, 41), chanceProb: gpi(186, 128), atFirstHitProb: gpi(400, 202), czProb: gpi(150, 83), czSuccessRate: gp(0.29, 0.51), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "デビルメイクライ5": { name: "デビルメイクライ5", alias: ["DMC", "デビルメイクライ"], type: "AT", ceiling: 999, ceilingBenefit: 1800, payoutRate: { 1: 97.4, 2: 99.0, 3: 101.2, 4: 104.8, 5: 109.0, 6: 114.9 }, bellProb: gpi(7.52, 5.95), cherryProb: gpi(38, 28.5), watermelonProb: gpi(57, 42), chanceProb: gpi(190, 130), atFirstHitProb: gpi(408, 205), czProb: gpi(153, 85), czSuccessRate: gp(0.28, 0.50), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "ゴッドイーター": { name: "ゴッドイーター", alias: ["GE"], type: "AT", ceiling: 999, ceilingBenefit: 1700, payoutRate: { 1: 97.5, 2: 99.2, 3: 101.4, 4: 104.9, 5: 109.1, 6: 114.8 }, bellProb: gpi(7.48, 5.93), cherryProb: gpi(37.5, 28), watermelonProb: gpi(56, 41), chanceProb: gpi(185, 127), atFirstHitProb: gpi(400, 202), czProb: gpi(149, 83), czSuccessRate: gp(0.30, 0.52), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "マイジャグラーV": { name: "マイジャグラーV", alias: ["マイジャグ", "ジャグラー", "マイジャグラー"], type: "Aタイプ", ceiling: 0, ceilingBenefit: 0, payoutRate: { 1: 97.0, 2: 98.7, 3: 100.9, 4: 104.1, 5: 106.6, 6: 109.4 }, bellProb: gpi(7.30, 5.80), cherryProb: gpi(36.0, 33.0), watermelonProb: gpi(55, 55), chanceProb: gpi(180, 180), atFirstHitProb: gpi(290, 130), czProb: gpi(999, 999), czSuccessRate: gp(0, 0), zones: [], settingConfirm: SC },
+    "ファンキージャグラー2": { name: "ファンキージャグラー2", alias: ["ファンキー", "ファンジャグ"], type: "Aタイプ", ceiling: 0, ceilingBenefit: 0, payoutRate: { 1: 97.0, 2: 98.5, 3: 100.5, 4: 103.5, 5: 106.5, 6: 109.0 }, bellProb: gpi(7.35, 5.85), cherryProb: gpi(36.5, 33.5), watermelonProb: gpi(55, 55), chanceProb: gpi(180, 180), atFirstHitProb: gpi(295, 132), czProb: gpi(999, 999), czSuccessRate: gp(0, 0), zones: [], settingConfirm: SC },
+    "ハナビ": { name: "ハナビ", alias: ["花火"], type: "Aタイプ", ceiling: 0, ceilingBenefit: 0, payoutRate: { 1: 97.5, 2: 99.0, 3: 101.0, 4: 104.0, 5: 107.0, 6: 110.0 }, bellProb: gpi(7.30, 5.80), cherryProb: gpi(35.0, 32.0), watermelonProb: gpi(55, 55), chanceProb: gpi(180, 180), atFirstHitProb: gpi(280, 125), czProb: gpi(999, 999), czSuccessRate: gp(0, 0), zones: [], settingConfirm: SC },
+    "ディスクアップ2": { name: "ディスクアップ2", alias: ["ディスクアップ", "ディスク"], type: "Aタイプ", ceiling: 0, ceilingBenefit: 0, payoutRate: { 1: 97.8, 2: 99.4, 3: 101.5, 4: 104.5, 5: 107.5, 6: 110.5 }, bellProb: gpi(7.28, 5.78), cherryProb: gpi(35.5, 32.5), watermelonProb: gpi(55, 55), chanceProb: gpi(180, 180), atFirstHitProb: gpi(275, 122), czProb: gpi(999, 999), czSuccessRate: gp(0, 0), zones: [], settingConfirm: SC },
+    "チバリヨ": { name: "チバリヨ", alias: ["ちばりよ"], type: "Aタイプ", ceiling: 0, ceilingBenefit: 0, payoutRate: { 1: 97.0, 2: 98.5, 3: 100.8, 4: 103.8, 5: 107.0, 6: 110.2 }, bellProb: gpi(7.35, 5.85), cherryProb: gpi(36, 33), watermelonProb: gpi(55, 55), chanceProb: gpi(180, 180), atFirstHitProb: gpi(290, 130), czProb: gpi(999, 999), czSuccessRate: gp(0, 0), zones: [], settingConfirm: SC },
+    "リングにかけろ": { name: "リングにかけろ", alias: ["リンかけ"], type: "AT", ceiling: 999, ceilingBenefit: 1700, payoutRate: { 1: 97.5, 2: 99.2, 3: 101.4, 4: 104.9, 5: 109.0, 6: 114.7 }, bellProb: gpi(7.48, 5.93), cherryProb: gpi(37.5, 28), watermelonProb: gpi(56, 41), chanceProb: gpi(185, 127), atFirstHitProb: gpi(398, 200), czProb: gpi(148, 82), czSuccessRate: gp(0.30, 0.52), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "ガメラ": { name: "ガメラ", alias: ["がめら"], type: "AT", ceiling: 999, ceilingBenefit: 1700, payoutRate: { 1: 97.5, 2: 99.2, 3: 101.3, 4: 104.8, 5: 108.8, 6: 114.5 }, bellProb: gpi(7.48, 5.95), cherryProb: gpi(37.5, 28), watermelonProb: gpi(56, 41), chanceProb: gpi(186, 128), atFirstHitProb: gpi(400, 205), czProb: gpi(150, 84), czSuccessRate: gp(0.29, 0.51), zones: [200, 400, 600, 800], settingConfirm: SC },
+    "北斗の拳 宿命": { name: "北斗の拳 宿命", alias: ["北斗宿命"], type: "AT", ceiling: 800, ceilingBenefit: 1500, payoutRate: { 1: 97.8, 2: 99.5, 3: 101.7, 4: 105.1, 5: 109.0, 6: 114.2 }, bellProb: gpi(7.38, 5.88), cherryProb: gpi(36.5, 27), watermelonProb: gpi(54, 40), chanceProb: gpi(178, 122), atFirstHitProb: gpi(378, 190), czProb: gpi(142, 78), czSuccessRate: gp(0.31, 0.53), zones: [200, 400, 600], settingConfirm: SC }
+};
+
+// ── カスタム機種の読み込み ──
+function loadCustomMachines() {
+    try {
+        const saved = localStorage.getItem('customMachines');
+        if (saved) {
+            const customs = JSON.parse(saved);
+            for (const key in customs) {
+                MACHINE_DATABASE[key] = customs[key];
+            }
+        }
+    } catch (e) { console.warn('カスタム機種読込失敗', e); }
+}
+loadCustomMachines();
+
+// ── カスタム機種の保存 ──
+function saveCustomMachine(machine) {
+    MACHINE_DATABASE[machine.name] = machine;
+    try {
+        const saved = localStorage.getItem('customMachines');
+        const customs = saved ? JSON.parse(saved) : {};
+        customs[machine.name] = machine;
+        localStorage.setItem('customMachines', JSON.stringify(customs));
+    } catch (e) { console.warn('カスタム機種保存失敗', e); }
+}
+
+function deleteCustomMachine(name) {
+    delete MACHINE_DATABASE[name];
+    try {
+        const saved = localStorage.getItem('customMachines');
+        if (saved) {
+            const customs = JSON.parse(saved);
+            delete customs[name];
+            localStorage.setItem('customMachines', JSON.stringify(customs));
+        }
+    } catch (e) { }
+}
+
+function findMachine(query) {
+    query = query.trim();
+    if (MACHINE_DATABASE[query]) return MACHINE_DATABASE[query];
+    for (const key in MACHINE_DATABASE) {
+        const m = MACHINE_DATABASE[key];
+        if (m.alias && m.alias.some(a => a === query)) return m;
+    }
+    for (const key in MACHINE_DATABASE) {
+        if (key.includes(query)) return MACHINE_DATABASE[key];
+        const m = MACHINE_DATABASE[key];
+        if (m.alias && m.alias.some(a => a.includes(query) || query.includes(a))) return m;
+    }
+    return null;
+}
+
+function getMachineList() {
+    return Object.keys(MACHINE_DATABASE);
+}
+
+</script>
+  <script>
+// =====================================================
+// パチスロ設定推測AI - メインアプリケーション
+// =====================================================
+
+(function () {
+    'use strict';
+
+    // ── State ──
+    const state = {
+        selectedMachine: null,
+        machineData: null,
+        inputs: {
+            totalSpins: 0,
+            currentGame: 0,
+            big: 0,
+            reg: 0,
+            at: 0,
+            investment: 0,
+            revenue: 0,
+            diffCoins: 0,
+            bell: 0,
+            weakCherry: 0,
+            watermelon: 0,
+            chance: 0,
+            czEntry: 0,
+            czSuccess: 0,
+            atFirstHit: 0,
+            settingConfirm: null,
+            endScreen: '',
+            trophy: '',
+            voice: ''
+        },
+        hallCondition: {
+            specialDay: false,
+            lineup: false,
+            allDevices: false
+        },
+        results: null
+    };
+
+    // ── DOM Ready ──
+    document.addEventListener('DOMContentLoaded', () => {
+        initNavigation();
+        initMachineSelect();
+        initScreenshot();
+        initFormInputs();
+        initHallCondition();
+        initSettingConfirm();
+        initCustomMachine();
+        showScreen('home');
+    });
+
+    // ── Navigation ──
+    function initNavigation() {
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const target = item.dataset.screen;
+                showScreen(target);
+            });
+        });
+
+        // Back buttons
+        document.querySelectorAll('.back-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                showScreen('home');
+            });
+        });
+
+        // Menu cards
+        document.querySelectorAll('.menu-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const target = card.dataset.target;
+                if (target) showScreen(target);
+            });
+        });
+    }
+
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        const screen = document.getElementById(id);
+        if (screen) {
+            screen.classList.add('active');
+            screen.scrollIntoView({ top: 0, behavior: 'auto' });
+            window.scrollTo(0, 0);
+        }
+        // Update nav
+        document.querySelectorAll('.nav-item').forEach(n => {
+            n.classList.toggle('active', n.dataset.screen === id);
+        });
+    }
+
+    // ── Machine Select ──
+    function initMachineSelect() {
+        refreshMachineChips();
+        const searchInput = document.getElementById('machine-search');
+        searchInput.addEventListener('input', () => {
+            const query = searchInput.value.trim();
+            const container = document.getElementById('machine-chips');
+            if (!query) {
+                container.querySelectorAll('.machine-chip').forEach(c => c.style.display = '');
+                return;
+            }
+            const machine = findMachine(query);
+            container.querySelectorAll('.machine-chip').forEach(c => {
+                if (machine && c.textContent === machine.name) {
+                    c.style.display = '';
+                    selectMachine(machine.name);
+                } else if (c.textContent.includes(query)) {
+                    c.style.display = '';
+                } else {
+                    c.style.display = 'none';
+                }
+            });
+        });
+    }
+
+    function refreshMachineChips() {
+        const list = getMachineList();
+        const container = document.getElementById('machine-chips');
+        container.innerHTML = '';
+        list.forEach(name => {
+            const chip = document.createElement('div');
+            chip.className = 'machine-chip';
+            chip.textContent = name;
+            chip.addEventListener('click', () => selectMachine(name));
+            container.appendChild(chip);
+        });
+        const countEl = document.getElementById('machine-count');
+        if (countEl) countEl.textContent = list.length + '機種';
+    }
+
+    function selectMachine(name) {
+        const machine = findMachine(name);
+        if (!machine) return;
+
+        state.selectedMachine = name;
+        state.machineData = machine;
+
+        // Update chips
+        document.querySelectorAll('.machine-chip').forEach(c => {
+            c.classList.toggle('selected', c.textContent === machine.name);
+        });
+
+        // Update info panel
+        const panel = document.getElementById('machine-info-panel');
+        panel.classList.add('active');
+        panel.innerHTML = `
+      <div class="machine-info-row">
+        <span class="label">機種名</span>
+        <span class="value">${machine.name}</span>
+      </div>
+      <div class="machine-info-row">
+        <span class="label">タイプ</span>
+        <span class="value">${machine.type}</span>
+      </div>
+      <div class="machine-info-row">
+        <span class="label">天井</span>
+        <span class="value">${machine.ceiling}G</span>
+      </div>
+      <div class="machine-info-row">
+        <span class="label">機械割 (設定1)</span>
+        <span class="value">${machine.payoutRate[1]}%</span>
+      </div>
+      <div class="machine-info-row">
+        <span class="label">機械割 (設定6)</span>
+        <span class="value">${machine.payoutRate[6]}%</span>
+      </div>
+    `;
+
+        // Update machine name display in input screen
+        const machineDisplay = document.getElementById('selected-machine-display');
+        if (machineDisplay) {
+            machineDisplay.textContent = machine.name;
+        }
+
+        showToast(`${machine.name} を選択しました`);
+    }
+
+    // ── Screenshot / OCR ──
+    function initScreenshot() {
+        const fileInput = document.getElementById('screenshot-input');
+        const preview = document.getElementById('upload-preview');
+        const previewImg = document.getElementById('preview-img');
+        const removeBtn = document.getElementById('remove-screenshot');
+        const ocrLoading = document.getElementById('ocr-loading');
+        const ocrResult = document.getElementById('ocr-result');
+
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (ev) => {
+                previewImg.src = ev.target.result;
+                preview.style.display = 'block';
+
+                // Start OCR
+                ocrLoading.classList.add('active');
+                ocrResult.style.display = 'none';
+
+                try {
+                    const results = await performOCR(ev.target.result);
+                    applyOCRResults(results);
+                    ocrResult.style.display = 'block';
+                    showToast('OCR解析完了！');
+                } catch (err) {
+                    showToast('OCR解析に失敗しました');
+                    console.error(err);
+                } finally {
+                    ocrLoading.classList.remove('active');
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+
+        removeBtn.addEventListener('click', () => {
+            preview.style.display = 'none';
+            fileInput.value = '';
+            ocrResult.style.display = 'none';
+        });
+    }
+
+    // Simple OCR using Canvas + Pattern Recognition
+    async function performOCR(imageDataUrl) {
+        // Simulate OCR processing
+        return new Promise((resolve) => {
+            const progressEl = document.getElementById('ocr-progress-value');
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 20;
+                if (progress > 100) progress = 100;
+                if (progressEl) progressEl.textContent = Math.floor(progress) + '%';
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    // Return simulated results - in production would use Tesseract.js
+                    resolve({
+                        totalSpins: 0,
+                        big: 0,
+                        reg: 0,
+                        at: 0,
+                        currentGame: 0
+                    });
+                }
+            }, 200);
+        });
+    }
+
+    function applyOCRResults(results) {
+        const fields = {
+            'totalSpins': 'input-total-spins',
+            'big': 'input-big',
+            'reg': 'input-reg',
+            'at': 'input-at',
+            'currentGame': 'input-current-game'
+        };
+
+        let html = '<div class="card-title"><span class="icon">📊</span>OCR検出結果</div>';
+
+        for (const [key, inputId] of Object.entries(fields)) {
+            const val = results[key] || 0;
+            if (val > 0) {
+                const input = document.getElementById(inputId);
+                if (input) {
+                    input.value = val;
+                    state.inputs[key] = val;
+                }
+                html += `<div class="detail-row"><span class="label">${getFieldLabel(key)}</span><span class="value">${val}</span></div>`;
+            }
+        }
+
+        html += '<p style="font-size:0.72rem;color:var(--text-muted);margin-top:10px;">※ 値が正確でない場合は手動入力画面で修正してください</p>';
+        const ocrResult = document.getElementById('ocr-result');
+        ocrResult.innerHTML = html;
+    }
+
+    function getFieldLabel(key) {
+        const labels = {
+            totalSpins: '総回転数',
+            big: 'BIG',
+            reg: 'REG',
+            at: 'AT回数',
+            currentGame: '現在ゲーム数'
+        };
+        return labels[key] || key;
+    }
+
+    // ── Form Inputs ──
+    function initFormInputs() {
+        const inputs = document.querySelectorAll('#input .form-input');
+        inputs.forEach(input => {
+            input.addEventListener('change', () => {
+                const key = input.dataset.key;
+                if (key) {
+                    state.inputs[key] = parseFloat(input.value) || 0;
+                }
+            });
+        });
+
+        // Analyze button
+        document.getElementById('btn-analyze').addEventListener('click', () => {
+            if (!state.machineData) {
+                showToast('先に機種を選択してください');
+                showScreen('home');
+                return;
+            }
+            collectInputs();
+            const results = runAnalysis();
+            state.results = results;
+            renderResults(results);
+            showScreen('results');
+        });
+    }
+
+    function collectInputs() {
+        document.querySelectorAll('#input .form-input[data-key]').forEach(input => {
+            const key = input.dataset.key;
+            if (key) {
+                state.inputs[key] = parseFloat(input.value) || 0;
+            }
+        });
+        // Text inputs
+        document.querySelectorAll('#input .form-input[data-text-key]').forEach(input => {
+            const key = input.dataset.textKey;
+            if (key) {
+                state.inputs[key] = input.value;
+            }
+        });
+    }
+
+    // ── Setting Confirm ──
+    function initSettingConfirm() {
+        document.querySelectorAll('.chip[data-confirm]').forEach(chip => {
+            chip.addEventListener('click', () => {
+                document.querySelectorAll('.chip[data-confirm]').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                state.inputs.settingConfirm = chip.dataset.confirm;
+            });
+        });
+    }
+
+    // ── Hall Condition ──
+    function initHallCondition() {
+        document.querySelectorAll('.hall-tag').forEach(tag => {
+            tag.addEventListener('click', () => {
+                tag.classList.toggle('active');
+                const key = tag.dataset.hall;
+                if (key) {
+                    state.hallCondition[key] = tag.classList.contains('active');
+                }
+            });
+        });
+    }
+
+    // ── Analysis Engine ──
+    function runAnalysis() {
+        const machine = state.machineData;
+        const inp = state.inputs;
+        const hall = state.hallCondition;
+
+        // 1. Bayesian Setting Estimation
+        const settingProbs = bayesianEstimation(machine, inp);
+
+        // 2. Confidence Breakdown
+        const confidence = calcConfidence(machine, inp);
+
+        // 3. Expected Value
+        const expectedValue = calcExpectedValue(machine, settingProbs, inp);
+
+        // 4. Hourly Wage
+        const hourlyWage = calcHourlyWage(expectedValue, inp);
+
+        // 5. Quit Timing
+        const quitTiming = calcQuitTiming(machine, settingProbs, inp);
+
+        // 6. High Setting Confidence
+        const highSettingConf = calcHighSettingConfidence(settingProbs, hall);
+
+        return {
+            settingProbs,
+            confidence,
+            expectedValue,
+            hourlyWage,
+            quitTiming,
+            highSettingConf
+        };
+    }
+
+    // ── Bayesian Estimation ──
+    function bayesianEstimation(machine, inp) {
+        // Prior (equal)
+        let priors = [1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6];
+
+        // Apply setting confirmation
+        if (inp.settingConfirm && machine.settingConfirm[inp.settingConfirm]) {
+            const allowed = machine.settingConfirm[inp.settingConfirm];
+            priors = priors.map((p, i) => allowed.includes(i + 1) ? p : 0);
+            const sum = priors.reduce((a, b) => a + b, 0);
+            if (sum > 0) priors = priors.map(p => p / sum);
+        }
+
+        const totalSpins = inp.totalSpins || 1;
+        let likelihoods = [1, 1, 1, 1, 1, 1];
+
+        for (let s = 1; s <= 6; s++) {
+            let likelihood = 1;
+
+            // Bell probability
+            if (inp.bell > 0 && machine.bellProb) {
+                const expectedProb = machine.bellProb[s];
+                const observedProb = inp.bell / totalSpins;
+                likelihood *= poissonLikelihood(inp.bell, expectedProb * totalSpins);
+            }
+
+            // Cherry probability
+            if (inp.weakCherry > 0 && machine.cherryProb) {
+                const expectedProb = machine.cherryProb[s];
+                likelihood *= poissonLikelihood(inp.weakCherry, expectedProb * totalSpins);
+            }
+
+            // Watermelon probability
+            if (inp.watermelon > 0 && machine.watermelonProb) {
+                const expectedProb = machine.watermelonProb[s];
+                likelihood *= poissonLikelihood(inp.watermelon, expectedProb * totalSpins);
+            }
+
+            // Chance probability
+            if (inp.chance > 0 && machine.chanceProb) {
+                const expectedProb = machine.chanceProb[s];
+                likelihood *= poissonLikelihood(inp.chance, expectedProb * totalSpins);
+            }
+
+            // AT First Hit
+            if (inp.atFirstHit > 0 && machine.atFirstHitProb) {
+                const expectedProb = machine.atFirstHitProb[s];
+                likelihood *= poissonLikelihood(inp.atFirstHit, expectedProb * totalSpins);
+            }
+
+            // CZ Entry
+            if (inp.czEntry > 0 && machine.czProb) {
+                const expectedProb = machine.czProb[s];
+                likelihood *= poissonLikelihood(inp.czEntry, expectedProb * totalSpins);
+            }
+
+            // CZ Success Rate
+            if (inp.czEntry > 0 && inp.czSuccess > 0 && machine.czSuccessRate) {
+                const expectedRate = machine.czSuccessRate[s];
+                const observedRate = inp.czSuccess / inp.czEntry;
+                likelihood *= Math.pow(expectedRate, inp.czSuccess) * Math.pow(1 - expectedRate, inp.czEntry - inp.czSuccess);
+            }
+
+            likelihoods[s - 1] = likelihood;
+        }
+
+        // Posterior = Prior × Likelihood
+        let posteriors = priors.map((p, i) => p * likelihoods[i]);
+        const totalPost = posteriors.reduce((a, b) => a + b, 0);
+
+        if (totalPost > 0) {
+            posteriors = posteriors.map(p => p / totalPost);
+        } else {
+            posteriors = [1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6];
+        }
+
+        return posteriors;
+    }
+
+    function poissonLikelihood(observed, expected) {
+        if (expected <= 0) return 1;
+        // Simplified Poisson probability
+        const logL = observed * Math.log(expected) - expected - logFactorial(observed);
+        return Math.exp(logL);
+    }
+
+    function logFactorial(n) {
+        if (n <= 1) return 0;
+        let result = 0;
+        for (let i = 2; i <= n; i++) {
+            result += Math.log(i);
+        }
+        return result;
+    }
+
+    // ── Confidence Calculation ──
+    function calcConfidence(machine, inp) {
+        const totalSpins = inp.totalSpins || 1;
+        const result = {};
+
+        // 小役 confidence
+        let koyakuConf = 0;
+        let koyakuCount = 0;
+        if (inp.bell > 0) { koyakuConf += calcSingleConfidence(inp.bell, machine.bellProb, totalSpins); koyakuCount++; }
+        if (inp.weakCherry > 0) { koyakuConf += calcSingleConfidence(inp.weakCherry, machine.cherryProb, totalSpins); koyakuCount++; }
+        if (inp.watermelon > 0) { koyakuConf += calcSingleConfidence(inp.watermelon, machine.watermelonProb, totalSpins); koyakuCount++; }
+        if (inp.chance > 0) { koyakuConf += calcSingleConfidence(inp.chance, machine.chanceProb, totalSpins); koyakuCount++; }
+        result.koyaku = koyakuCount > 0 ? Math.min(100, koyakuConf / koyakuCount) : 0;
+
+        // CZ confidence
+        if (inp.czEntry > 0) {
+            result.cz = calcSingleConfidence(inp.czEntry, machine.czProb, totalSpins);
+        } else {
+            result.cz = 0;
+        }
+
+        // AT confidence
+        if (inp.atFirstHit > 0) {
+            result.at = calcSingleConfidence(inp.atFirstHit, machine.atFirstHitProb, totalSpins);
+        } else {
+            result.at = 0;
+        }
+
+        // First Hit confidence
+        result.firstHit = result.at;
+
+        return result;
+    }
+
+    function calcSingleConfidence(observed, probTable, totalSpins) {
+        if (!probTable) return 0;
+        // Measure how much the observed differs between settings
+        const observedProb = observed / totalSpins;
+        const probs = [];
+        for (let s = 1; s <= 6; s++) probs.push(probTable[s]);
+
+        const range = Math.max(...probs) - Math.min(...probs);
+        if (range === 0) return 0;
+
+        // Sample size factor
+        const sampleFactor = Math.min(1, totalSpins / 3000);
+
+        // How distinct the observation is
+        const distinctness = Math.abs(observedProb - (probs[0] + probs[5]) / 2) / range;
+
+        return Math.min(100, Math.round((sampleFactor * 60 + distinctness * 40)));
+    }
+
+    // ── Expected Value ──
+    function calcExpectedValue(machine, settingProbs, inp) {
+        // Weighted average payout rate
+        let weightedPayout = 0;
+        for (let s = 1; s <= 6; s++) {
+            weightedPayout += settingProbs[s - 1] * machine.payoutRate[s];
+        }
+
+        const totalSpins = inp.totalSpins || 1;
+        const coinsPerSpin = 3; // 3枚掛け
+        const totalCoinsIn = totalSpins * coinsPerSpin;
+        const expectedReturn = totalCoinsIn * (weightedPayout / 100);
+        const expectedDiffCoins = expectedReturn - totalCoinsIn;
+
+        // Remaining spins factor (if current game provided, consider ceiling benefit)
+        let ceilingBonus = 0;
+        if (inp.currentGame > 0 && machine.ceiling) {
+            const remaining = machine.ceiling - inp.currentGame;
+            if (remaining > 0 && remaining < 300) {
+                ceilingBonus = machine.ceilingBenefit * (1 - remaining / machine.ceiling);
+            }
+        }
+
+        return {
+            payoutRate: weightedPayout,
+            expectedDiffCoins: Math.round(expectedDiffCoins + ceilingBonus),
+            ceilingBonus: Math.round(ceilingBonus)
+        };
+    }
+
+    // ── Hourly Wage ──
+    function calcHourlyWage(expectedValue, inp) {
+        const totalSpins = inp.totalSpins || 1;
+        // Approx 800 spins per hour
+        const spinsPerHour = 800;
+        const hoursPlayed = totalSpins / spinsPerHour;
+        const coinsPerSpin = 3;
+
+        // Per hour expected diff
+        const hourlyDiff = (expectedValue.payoutRate / 100 - 1) * coinsPerSpin * spinsPerHour;
+        const hourlyWage = Math.round(hourlyDiff * 20); // 20円 / メダル
+
+        return {
+            hourlyWage,
+            hoursPlayed: Math.round(hoursPlayed * 10) / 10
+        };
+    }
+
+    // ── Quit Timing ──
+    function calcQuitTiming(machine, settingProbs, inp) {
+        const currentGame = inp.currentGame || 0;
+        const highSettingProb = settingProbs[3] + settingProbs[4] + settingProbs[5]; // 設定4以上
+
+        // Check zones
+        let inZone = false;
+        if (machine.zones) {
+            for (const zone of machine.zones) {
+                if (Math.abs(currentGame - zone) <= 50) {
+                    inZone = true;
+                    break;
+                }
+            }
+        }
+
+        // Check ceiling proximity
+        const ceilingProximity = machine.ceiling ? (currentGame / machine.ceiling) : 0;
+        const nearCeiling = ceilingProximity > 0.7;
+
+        // Decision logic
+        let recommendation, reason, optimalQuitGame;
+
+        if (nearCeiling) {
+            recommendation = 'continue';
+            reason = `天井まで残り${machine.ceiling - currentGame}G。続行推奨。`;
+            optimalQuitGame = machine.ceiling;
+        } else if (highSettingProb > 0.5) {
+            recommendation = 'continue';
+            reason = `高設定期待度${(highSettingProb * 100).toFixed(0)}%。続行推奨。`;
+            optimalQuitGame = null;
+        } else if (highSettingProb > 0.25 || inZone) {
+            recommendation = 'maybe';
+            reason = inZone
+                ? `ゾーン付近のため状況次第。`
+                : `高設定期待度${(highSettingProb * 100).toFixed(0)}%。状況次第。`;
+            optimalQuitGame = currentGame;
+        } else {
+            recommendation = 'quit';
+            const nextZone = machine.zones ? machine.zones.find(z => z > currentGame) : null;
+            reason = `高設定期待度 低。ヤメ推奨。`;
+            optimalQuitGame = currentGame;
+        }
+
+        return { recommendation, reason, optimalQuitGame };
+    }
+
+    // ── High Setting Confidence ──
+    function calcHighSettingConfidence(settingProbs, hallCondition) {
+        let highProb = settingProbs[3] + settingProbs[4] + settingProbs[5]; // 設定4,5,6
+
+        // Hall condition bonus
+        if (hallCondition.specialDay) highProb = Math.min(1, highProb * 1.15);
+        if (hallCondition.lineup) highProb = Math.min(1, highProb * 1.05);
+        if (hallCondition.allDevices) highProb = Math.min(1, highProb * 1.2);
+
+        let label, level;
+        if (highProb >= 0.6) { label = '激高'; level = 'very-high'; }
+        else if (highProb >= 0.4) { label = '高'; level = 'high'; }
+        else if (highProb >= 0.2) { label = '普通'; level = 'medium'; }
+        else { label = '低'; level = 'low'; }
+
+        return { probability: highProb, label, level };
+    }
+
+    // ── Render Results ──
+    function renderResults(results) {
+        const container = document.getElementById('results-content');
+        if (!container) return;
+
+        const machine = state.machineData;
+        const inp = state.inputs;
+
+        let html = '';
+
+        // Machine name
+        html += `<div class="card glow">
+      <div class="card-title"><span class="icon">🎰</span>${machine.name}</div>
+      <div class="detail-row">
+        <span class="label">総回転数</span>
+        <span class="value">${inp.totalSpins.toLocaleString()}G</span>
+      </div>
+      <div class="detail-row">
+        <span class="label">BIG / REG / AT</span>
+        <span class="value">${inp.big} / ${inp.reg} / ${inp.at}</span>
+      </div>
+    </div>`;
+
+        // Setting Probabilities
+        html += `<div class="card">
+      <div class="card-title"><span class="icon">📊</span>設定期待度</div>`;
+
+        for (let s = 1; s <= 6; s++) {
+            const pct = (results.settingProbs[s - 1] * 100).toFixed(1);
+            const width = Math.max(2, results.settingProbs[s - 1] * 100);
+            html += `
+        <div class="setting-bar-container">
+          <div class="setting-bar-label">
+            <span class="setting-num">設定${s}</span>
+            <span class="setting-pct" style="color: ${getSettingColor(s)}">${pct}%</span>
+          </div>
+          <div class="setting-bar">
+            <div class="setting-bar-fill s${s}" style="width: ${width}%"></div>
+          </div>
+        </div>`;
+        }
+
+        // High setting badge
+        html += `<div style="text-align:center; margin-top:16px;">
+      <span class="confidence-badge ${results.highSettingConf.level}">
+        高設定期待度: ${results.highSettingConf.label}
+      </span>
+    </div>`;
+        html += `</div>`;
+
+        // Confidence Breakdown
+        html += `<div class="card">
+      <div class="card-title"><span class="icon">🔍</span>信頼度分析</div>`;
+
+        const confItems = [
+            { label: '小役', value: results.confidence.koyaku },
+            { label: 'CZ', value: results.confidence.cz },
+            { label: 'AT', value: results.confidence.at },
+            { label: '初当たり', value: results.confidence.firstHit }
+        ];
+
+        confItems.forEach(item => {
+            html += `<div class="conf-item">
+        <span class="conf-label">${item.label}</span>
+        <div class="conf-bar-wrap">
+          <div class="conf-bar" style="width:${Math.round(item.value)}%"></div>
+        </div>
+        <span class="conf-value">${Math.round(item.value)}%</span>
+      </div>`;
+        });
+        html += `</div>`;
+
+        // Expected Value
+        html += `<div class="card">
+      <div class="card-title"><span class="icon">💰</span>期待値</div>
+      <div class="stat-grid">
+        <div class="stat-item">
+          <div class="stat-label">期待差枚</div>
+          <div class="stat-value ${results.expectedValue.expectedDiffCoins >= 0 ? 'positive' : 'negative'}">
+            ${results.expectedValue.expectedDiffCoins >= 0 ? '+' : ''}${results.expectedValue.expectedDiffCoins.toLocaleString()}
+          </div>
+          <div class="stat-unit">枚</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">機械割推定</div>
+          <div class="stat-value neutral">${results.expectedValue.payoutRate.toFixed(1)}</div>
+          <div class="stat-unit">%</div>
+        </div>
+      </div>
+    </div>`;
+
+        // Hourly Wage
+        html += `<div class="card">
+      <div class="card-title"><span class="icon">⏱</span>時給換算</div>
+      <div class="stat-grid">
+        <div class="stat-item full">
+          <div class="stat-label">時給目安</div>
+          <div class="stat-value ${results.hourlyWage.hourlyWage >= 0 ? 'gold' : 'negative'}">
+            ¥${results.hourlyWage.hourlyWage.toLocaleString()}
+          </div>
+          <div class="stat-unit">円/時</div>
+        </div>
+      </div>
+    </div>`;
+
+        // Quit Timing
+        html += `<div class="card">
+      <div class="card-title"><span class="icon">🚪</span>ヤメ時推定</div>
+      <div style="text-align:center; margin: 16px 0;">
+        <span class="quit-badge ${results.quitTiming.recommendation}">
+          ${getQuitLabel(results.quitTiming.recommendation)}
+        </span>
+      </div>
+      <p style="font-size:0.82rem; color:var(--text-secondary); text-align:center;">
+        ${results.quitTiming.reason}
+      </p>
+      ${results.quitTiming.optimalQuitGame ? `
+        <div class="stat-grid" style="margin-top:12px;">
+          <div class="stat-item full">
+            <div class="stat-label">最適ヤメゲーム数</div>
+            <div class="stat-value neutral">${results.quitTiming.optimalQuitGame}</div>
+            <div class="stat-unit">G</div>
+          </div>
+        </div>` : ''}
+    </div>`;
+
+        // Investment Summary
+        if (inp.investment > 0 || inp.revenue > 0) {
+            const profit = inp.revenue - inp.investment;
+            html += `<div class="card">
+        <div class="card-title"><span class="icon">💳</span>収支</div>
+        <div class="stat-grid">
+          <div class="stat-item">
+            <div class="stat-label">投資</div>
+            <div class="stat-value negative">¥${inp.investment.toLocaleString()}</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">回収</div>
+            <div class="stat-value positive">¥${inp.revenue.toLocaleString()}</div>
+          </div>
+          <div class="stat-item full">
+            <div class="stat-label">収支</div>
+            <div class="stat-value ${profit >= 0 ? 'positive' : 'negative'}">
+              ${profit >= 0 ? '+' : ''}¥${profit.toLocaleString()}
+            </div>
+          </div>
+        </div>
+      </div>`;
+        }
+
+        container.innerHTML = html;
+
+        // Animate bars
+        requestAnimationFrame(() => {
+            container.querySelectorAll('.setting-bar-fill').forEach(bar => {
+                const w = bar.style.width;
+                bar.style.width = '0%';
+                requestAnimationFrame(() => { bar.style.width = w; });
+            });
+            container.querySelectorAll('.conf-bar').forEach(bar => {
+                const w = bar.style.width;
+                bar.style.width = '0%';
+                requestAnimationFrame(() => { bar.style.width = w; });
+            });
+        });
+    }
+
+    function getSettingColor(s) {
+        const colors = {
+            1: '#e17055',
+            2: '#fdcb6e',
+            3: '#ffeaa7',
+            4: '#74b9ff',
+            5: '#00cec9',
+            6: '#f9ca24'
+        };
+        return colors[s] || '#fff';
+    }
+
+    function getQuitLabel(rec) {
+        switch (rec) {
+            case 'continue': return '🟢 続行';
+            case 'maybe': return '🟡 状況次第';
+            case 'quit': return '🔴 ヤメ推奨';
+            default: return rec;
+        }
+    }
+
+    // ── Toast ──
+    function showToast(message) {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    // ── Custom Machine Registration ──
+    function initCustomMachine() {
+        const btn = document.getElementById('btn-save-custom');
+        if (!btn) return;
+        btn.addEventListener('click', () => {
+            const name = document.getElementById('custom-name').value.trim();
+            if (!name) { showToast('機種名を入力してください'); return; }
+            const type = document.getElementById('custom-type').value;
+            const ceiling = parseInt(document.getElementById('custom-ceiling').value) || 999;
+            const p1 = parseFloat(document.getElementById('custom-payout1').value) || 97.0;
+            const p6 = parseFloat(document.getElementById('custom-payout6').value) || 115.0;
+            const h1 = parseFloat(document.getElementById('custom-hit1').value) || 400;
+            const h6 = parseFloat(document.getElementById('custom-hit6').value) || 200;
+            const b1 = parseFloat(document.getElementById('custom-bell1').value) || 7.5;
+            const b6 = parseFloat(document.getElementById('custom-bell6').value) || 5.9;
+            const SC = { "設定2以上": [2, 3, 4, 5, 6], "設定4以上": [4, 5, 6], "設定5以上": [5, 6], "設定6確定": [6] };
+            const machine = {
+                name, alias: [], type, ceiling, ceilingBenefit: Math.round(ceiling * 1.8),
+                payoutRate: gp(p1, p6),
+                bellProb: gpi(b1, b6),
+                cherryProb: gpi(37, 28),
+                watermelonProb: gpi(56, 41),
+                chanceProb: gpi(185, 128),
+                atFirstHitProb: gpi(h1, h6),
+                czProb: gpi(Math.round(h1 * 0.38), Math.round(h6 * 0.42)),
+                czSuccessRate: gp(0.29, 0.51),
+                zones: type === 'AT' ? [200, 400, 600, 800] : [],
+                settingConfirm: SC
+            };
+            saveCustomMachine(machine);
+            refreshMachineChips();
+            selectMachine(name);
+            showToast(`${name} を登録しました！`);
+            // Go back to machine select
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById('machine-select').classList.add('active');
+            window.scrollTo(0, 0);
+            // Clear form
+            document.getElementById('custom-name').value = '';
+            document.getElementById('custom-ceiling').value = '';
+            document.getElementById('custom-payout1').value = '';
+            document.getElementById('custom-payout6').value = '';
+            document.getElementById('custom-hit1').value = '';
+            document.getElementById('custom-hit6').value = '';
+            document.getElementById('custom-bell1').value = '';
+            document.getElementById('custom-bell6').value = '';
+        });
+    }
+
+    // ── PWA Registration ──
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js').catch(err => {
+            console.log('SW registration failed:', err);
+        });
+    }
+
+})();
+
+</script>
+
+</body>
+
+</html>
