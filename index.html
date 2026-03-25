@@ -29,42 +29,67 @@
     <!-- ============ HOME SCREEN ============ -->
     <div id="home" class="screen active">
 
-      <!-- Machine Select Card -->
-      <div class="menu-card" data-target="machine-select">
-        <div class="menu-icon purple">🎰</div>
-        <div class="menu-info">
-          <h3>機種選択</h3>
-          <p>機種を選んで解析データを読み込み</p>
+      <!-- ★ Hero: 写真で判別 (メインCTA) -->
+      <div class="hero-card">
+        <div class="hero-badge">RECOMMENDED</div>
+        <div class="hero-emoji">📸</div>
+        <h2 class="hero-title">写真を撮るだけで設定判別</h2>
+        <p class="hero-desc">マイスロ・データカウンターの写真をアップするだけ。<br>AIが自動で数値を読み取り、設定を推測します。</p>
+        <div class="hero-steps">
+          <div class="hero-step"><span class="step-num">1</span><span>機種を選ぶ</span></div>
+          <div class="hero-step-arrow">→</div>
+          <div class="hero-step"><span class="step-num">2</span><span>写真を撮る</span></div>
+          <div class="hero-step-arrow">→</div>
+          <div class="hero-step"><span class="step-num">3</span><span>結果を見る</span></div>
         </div>
-        <span class="menu-arrow">›</span>
+        <button id="hero-start-btn" class="btn btn-primary btn-full btn-lg hero-btn" data-target="myslot-bulk">
+          📱 写真で判別スタート
+        </button>
       </div>
 
-      <!-- Screenshot Card -->
-      <div class="menu-card" data-target="screenshot">
-        <div class="menu-icon gold">📸</div>
-        <div class="menu-info">
-          <h3>スクショ解析</h3>
-          <p>台データのスクリーンショットをOCR解析</p>
-        </div>
-        <span class="menu-arrow">›</span>
+      <!-- Machine Quick Select (compact) -->
+      <div class="card" id="home-machine-card">
+        <div class="card-title"><span class="icon">🎰</span>機種を選択 <span id="home-selected-badge" class="selected-badge" style="display:none;"></span></div>
+        <input type="text" class="form-input" id="home-machine-search" placeholder="機種名を入力（例：カバネリ、北斗）">
+        <div id="home-machine-chips" class="home-machine-chips"></div>
       </div>
 
-      <!-- Manual Input Card -->
-      <div class="menu-card" data-target="input">
-        <div class="menu-icon green">✏️</div>
-        <div class="menu-info">
-          <h3>手動入力</h3>
-          <p>回転数・ボーナス・小役を入力</p>
+      <!-- Menu Cards (secondary) -->
+      <div class="secondary-menu">
+        <div class="menu-card compact" data-target="myslot-bulk">
+          <div class="menu-icon" style="background:linear-gradient(135deg,#e17055,#f9ca24);">📱</div>
+          <div class="menu-info">
+            <h3>マイスロ一括解析</h3>
+            <p>複数スクショをまとめてアップ</p>
+          </div>
+          <span class="menu-arrow">›</span>
         </div>
-        <span class="menu-arrow">›</span>
-      </div>
 
-      <!-- Quick Result Card (if machine selected) -->
-      <div id="quick-status" class="card glow" style="display:none;">
-        <div class="card-title"><span class="icon">📌</span>選択中の機種</div>
-        <div class="detail-row">
-          <span class="label">機種名</span>
-          <span class="value" id="home-machine-name">-</span>
+        <div class="menu-card compact" data-target="screenshot">
+          <div class="menu-icon gold">📸</div>
+          <div class="menu-info">
+            <h3>データカウンター撮影</h3>
+            <p>台のデータ表示を1枚撮るだけ</p>
+          </div>
+          <span class="menu-arrow">›</span>
+        </div>
+
+        <div class="menu-card compact" data-target="machine-select">
+          <div class="menu-icon purple">🔍</div>
+          <div class="menu-info">
+            <h3>全機種一覧</h3>
+            <p>対応機種の詳細を確認</p>
+          </div>
+          <span class="menu-arrow">›</span>
+        </div>
+
+        <div class="menu-card compact" data-target="input">
+          <div class="menu-icon green">✏️</div>
+          <div class="menu-info">
+            <h3>手動入力（上級者向け）</h3>
+            <p>子役カウントなど詳細データを直接入力</p>
+          </div>
+          <span class="menu-arrow">›</span>
         </div>
       </div>
 
@@ -193,7 +218,7 @@
         <div class="card-title"><span class="icon">📸</span>スクリーンショット解析</div>
 
         <div class="upload-area" id="upload-area">
-          <input type="file" id="screenshot-input" accept="image/*" capture="environment">
+          <input type="file" id="screenshot-input" accept="image/*">
           <div class="upload-icon">📷</div>
           <p>タップして画像を選択</p>
           <small>台データのスクリーンショットをアップロード</small>
@@ -223,6 +248,106 @@
       </div>
     </div>
 
+    <!-- ============ MYSLOT BULK UPLOAD SCREEN ============ -->
+    <div id="myslot-bulk" class="screen">
+      <button class="back-btn"
+        onclick="document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('home').classList.add('active');">
+        ‹ 戻る
+      </button>
+
+      <div class="card glow">
+        <div class="card-title"><span class="icon">📱</span>マイスロ 一括解析</div>
+        <p style="font-size:0.78rem; color:var(--text-secondary); margin-bottom:14px;">
+          サミーの「マイスロ」アプリのスクリーンショットを一括アップロード。<br>
+          複数枚（最大10枚）をまとめてOCR解析し、データを自動入力します。
+        </p>
+
+        <div id="myslot-selected-machine" class="detail-row" style="border-bottom:1px solid var(--border-color); padding-bottom:10px; margin-bottom:14px;">
+          <span class="label">対象機種</span>
+          <span class="value" id="myslot-machine-name" style="color:var(--accent-secondary);">未選択</span>
+        </div>
+
+        <!-- Upload Area -->
+        <div class="myslot-upload-area" id="myslot-upload-area">
+          <input type="file" id="myslot-file-input" accept="image/*" multiple>
+          <div class="upload-icon">📸</div>
+          <p>タップして画像を選択<br><small>（複数枚OK・一括選択可能）</small></p>
+        </div>
+
+        <!-- Thumbnails -->
+        <div id="myslot-thumbnails" class="myslot-thumbnails"></div>
+
+        <!-- Add more button -->
+        <div id="myslot-add-more" class="myslot-add-more" style="display:none;">
+          <input type="file" id="myslot-add-file-input" accept="image/*" multiple>
+          <span>＋ 画像を追加</span>
+        </div>
+      </div>
+
+      <!-- OCR Progress -->
+      <div id="myslot-ocr-progress" class="card" style="display:none;">
+        <div class="card-title"><span class="icon">🔍</span>OCR解析中</div>
+        <div class="myslot-progress-container">
+          <div class="myslot-progress-bar">
+            <div class="myslot-progress-fill" id="myslot-progress-fill"></div>
+          </div>
+          <div class="myslot-progress-text">
+            <span id="myslot-progress-current">0</span> / <span id="myslot-progress-total">0</span> 枚
+          </div>
+        </div>
+        <p id="myslot-progress-status" style="font-size:0.78rem; color:var(--text-secondary); text-align:center; margin-top:8px;">準備中...</p>
+      </div>
+
+      <!-- OCR Results -->
+      <div id="myslot-results" class="card" style="display:none;">
+        <div class="card-title"><span class="icon">📊</span>解析結果</div>
+        <div id="myslot-results-content"></div>
+      </div>
+
+      <!-- ★ 設定示唆イベント確認パネル（OCR後に表示） -->
+      <div id="myslot-confirm-panel" class="card" style="display:none;">
+        <div class="card-title"><span class="icon">🏆</span>確認できた示唆イベント</div>
+        <p style="font-size:0.78rem; color:var(--text-secondary); margin-bottom:12px;">
+          写真に映っていた演出・トロフィーを選択してください。<br>
+          <strong style="color:var(--accent-secondary);">設定確定要素がある場合、精度が大幅にアップします。</strong>
+        </p>
+        <div class="confirm-event-grid" id="confirm-event-grid">
+          <!-- 汎用共通 -->
+          <button class="confirm-event-btn" data-confirm-key="inlineConfirm6" data-label="設定6確定">
+            🌈 設定6確定<span class="confirm-desc">（虹トロフィー・設定6確定画面等）</span>
+          </button>
+          <button class="confirm-event-btn" data-confirm-key="inlineConfirm56" data-label="設定5以上">
+            💜 設定5以上確定<span class="confirm-desc">（プレミアム演出等）</span>
+          </button>
+          <button class="confirm-event-btn" data-confirm-key="inlineConfirm456" data-label="設定4以上">
+            💙 設定4以上確定<span class="confirm-desc">（高設定確定画面等）</span>
+          </button>
+          <button class="confirm-event-btn" data-confirm-key="inlineConfirm246" data-label="偶数確定">
+            💚 偶数設定確定<span class="confirm-desc">（設定2・4・6確定）</span>
+          </button>
+          <button class="confirm-event-btn" data-confirm-key="inlineHighSuggest" data-label="高設定示唆">
+            ⭐ 高設定示唆（強）<span class="confirm-desc">（設定4以上濃厚演出）</span>
+          </button>
+          <button class="confirm-event-btn active-none" data-confirm-key="" data-label="なし">
+            ✖ なし / リセット
+          </button>
+        </div>
+        <div id="confirm-selected-display" style="margin-top:10px; font-size:0.8rem; color:var(--accent-secondary); display:none;">
+          ✓ 選択中: <span id="confirm-selected-label"></span>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="btn-group" style="margin-bottom:24px;">
+        <button id="btn-myslot-analyze" class="btn btn-primary btn-full btn-lg" style="display:none;">
+          🔍 一括OCR解析を実行
+        </button>
+        <button id="btn-myslot-apply" class="btn btn-success btn-full btn-lg" style="display:none;">
+          ✅ データを反映して設定判別へ
+        </button>
+      </div>
+    </div>
+
     <!-- ============ INPUT SCREEN ============ -->
     <div id="input" class="screen">
       <button class="back-btn"
@@ -235,113 +360,69 @@
         <div style="font-size:1.1rem; font-weight:700;">
           <span id="selected-machine-display">未選択</span>
         </div>
+        <p id="no-machine-hint" style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
+          先に機種を選択してください
+        </p>
       </div>
 
-      <!-- 回転数 -->
+      <!-- 回転数（共通） -->
       <div class="card">
         <div class="card-title"><span class="icon">🔄</span>回転数</div>
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">総回転数</label>
-            <input type="number" class="form-input" id="input-total-spins" data-key="totalSpins" placeholder="0"
-              inputmode="numeric">
+            <input type="number" class="form-input" id="input-total-spins" placeholder="0" inputmode="numeric">
           </div>
           <div class="form-group">
             <label class="form-label">現在ゲーム数</label>
-            <input type="number" class="form-input" id="input-current-game" data-key="currentGame" placeholder="0"
-              inputmode="numeric">
+            <input type="number" class="form-input" id="input-current-game" placeholder="0" inputmode="numeric">
           </div>
         </div>
       </div>
 
-      <!-- ボーナス・AT -->
-      <div class="card">
-        <div class="card-title"><span class="icon">🎯</span>ボーナス・AT</div>
-        <div class="form-row-3">
-          <div class="form-group">
-            <label class="form-label">BIG</label>
-            <input type="number" class="form-input" id="input-big" data-key="big" placeholder="0" inputmode="numeric">
-          </div>
-          <div class="form-group">
-            <label class="form-label">REG</label>
-            <input type="number" class="form-input" id="input-reg" data-key="reg" placeholder="0" inputmode="numeric">
-          </div>
-          <div class="form-group">
-            <label class="form-label">AT</label>
-            <input type="number" class="form-input" id="input-at" data-key="at" placeholder="0" inputmode="numeric">
-          </div>
+      <!-- ★ 機種特化フィールド（動的生成） -->
+      <div id="dynamic-fields-container">
+        <div class="card" style="text-align:center; padding: 24px;">
+          <p style="color:var(--text-muted); font-size:0.85rem;">
+            🎰 機種を選択すると、その機種に応じた入力フィールドが表示されます
+          </p>
         </div>
       </div>
 
-      <!-- 投資・回収 -->
+      <!-- 投資・回収（共通） -->
       <div class="card">
-        <div class="card-title"><span class="icon">💳</span>投資・回収</div>
+        <div class="card-title">
+          <span class="icon">💳</span>投資・回収
+          <button class="invest-toggle-btn" id="invest-mode-toggle" onclick="
+            const btn = this;
+            const labels = document.querySelectorAll('.invest-label');
+            const isYen = btn.textContent.trim() === '円';
+            btn.textContent = isYen ? '枚' : '円';
+            btn.classList.toggle('coins-mode', isYen);
+            labels.forEach(l => l.textContent = isYen ? l.dataset.coinsLabel : l.dataset.yenLabel);
+            // Update state
+            if (typeof window.__pachislotState !== 'undefined') {
+              window.__pachislotState.investmentMode = isYen ? 'coins' : 'yen';
+            }
+          ">円</button>
+        </div>
         <div class="form-row-3">
           <div class="form-group">
-            <label class="form-label">投資 (円)</label>
-            <input type="number" class="form-input" data-key="investment" placeholder="0" inputmode="numeric">
+            <label class="form-label invest-label" data-yen-label="投資 (円)" data-coins-label="投資 (枚)">投資 (円)</label>
+            <input type="number" class="form-input" id="input-investment" placeholder="0" inputmode="numeric">
           </div>
           <div class="form-group">
-            <label class="form-label">回収 (円)</label>
-            <input type="number" class="form-input" data-key="revenue" placeholder="0" inputmode="numeric">
+            <label class="form-label invest-label" data-yen-label="回収 (円)" data-coins-label="回収 (枚)">回収 (円)</label>
+            <input type="number" class="form-input" id="input-revenue" placeholder="0" inputmode="numeric">
           </div>
           <div class="form-group">
             <label class="form-label">差枚</label>
-            <input type="number" class="form-input" data-key="diffCoins" placeholder="0" inputmode="numeric">
+            <input type="number" class="form-input" id="input-diff-coins" placeholder="0" inputmode="numeric">
           </div>
         </div>
       </div>
 
-      <!-- 小役 -->
-      <div class="card">
-        <div class="card-title"><span class="icon">🍒</span>小役カウント</div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">ベル</label>
-            <input type="number" class="form-input" data-key="bell" placeholder="0" inputmode="numeric">
-          </div>
-          <div class="form-group">
-            <label class="form-label">弱チェリー</label>
-            <input type="number" class="form-input" data-key="weakCherry" placeholder="0" inputmode="numeric">
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">スイカ</label>
-            <input type="number" class="form-input" data-key="watermelon" placeholder="0" inputmode="numeric">
-          </div>
-          <div class="form-group">
-            <label class="form-label">チャンス目</label>
-            <input type="number" class="form-input" data-key="chance" placeholder="0" inputmode="numeric">
-          </div>
-        </div>
-      </div>
-
-      <!-- CZ -->
-      <div class="card">
-        <div class="card-title"><span class="icon">⚡</span>CZ</div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">CZ突入</label>
-            <input type="number" class="form-input" data-key="czEntry" placeholder="0" inputmode="numeric">
-          </div>
-          <div class="form-group">
-            <label class="form-label">CZ成功</label>
-            <input type="number" class="form-input" data-key="czSuccess" placeholder="0" inputmode="numeric">
-          </div>
-        </div>
-      </div>
-
-      <!-- AT初当たり -->
-      <div class="card">
-        <div class="card-title"><span class="icon">🎪</span>AT初当たり</div>
-        <div class="form-group">
-          <label class="form-label">AT初当たり回数</label>
-          <input type="number" class="form-input" data-key="atFirstHit" placeholder="0" inputmode="numeric">
-        </div>
-      </div>
-
-      <!-- 設定確定演出 -->
+      <!-- 設定確定演出（共通） -->
       <div class="card">
         <div class="card-title"><span class="icon">⭐</span>設定確定演出</div>
         <div class="chip-group">
@@ -352,33 +433,7 @@
         </div>
       </div>
 
-      <!-- 終了画面・トロフィー -->
-      <div class="card">
-        <div class="card-title"><span class="icon">🏆</span>演出・確認</div>
-        <div class="form-group">
-          <label class="form-label">終了画面</label>
-          <input type="text" class="form-input" data-text-key="endScreen" placeholder="例：エンディング画面">
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">トロフィー</label>
-            <select class="form-input" data-text-key="trophy">
-              <option value="">なし</option>
-              <option value="銅">銅</option>
-              <option value="銀">銀</option>
-              <option value="金">金</option>
-              <option value="キリン柄">キリン柄</option>
-              <option value="レインボー">レインボー</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">ボイス</label>
-            <input type="text" class="form-input" data-text-key="voice" placeholder="例：特殊ボイス">
-          </div>
-        </div>
-      </div>
-
-      <!-- ホール状況 -->
+      <!-- ホール状況（共通） -->
       <div class="card">
         <div class="card-title"><span class="icon">🏢</span>ホール状況</div>
         <div class="hall-tags">
@@ -444,6 +499,7 @@
   <div id="toast" class="toast"></div>
 
   <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="./machines.js"></script>
   <script src="./app.js"></script>
 
