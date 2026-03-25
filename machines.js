@@ -399,113 +399,73 @@ const GENERIC_A_TYPE_FIELDS = [
 
 const MACHINE_DATABASE = {
     // ═══════════════════════════════════════
-    // ★ からくりサーカス（特化版）
+    // ★ からくりサーカス（特化版）2025/5導入
     // ═══════════════════════════════════════
     "からくりサーカス": {
-        name: "からくりサーカス",
-        alias: ["からくり", "カラクリ"],
-        type: "AT",
-        ceiling: 999,
-        ceilingBenefit: 1800,
+        name: "からくりサーカス", alias: ["からくり", "カラクリ"], type: "AT",
+        ceiling: 999, ceilingBenefit: 1800,
         payoutRate: { 1: 97.5, 2: 99.0, 3: 101.5, 4: 105.0, 5: 109.0, 6: 114.9 },
-        // からくりは小役（ベル等）に設定差がないが、下記の専用確率テーブルを使用
         atFirstHitProb: { 1: 1/564, 2: 1/543, 3: 1/506, 4: 1/469, 5: 1/451, 6: 1/447 },
         czProb: { 1: 1/333, 2: 1/320, 3: 1/306, 4: 1/292, 5: 1/277, 6: 1/275 },
-        // AT直撃（モードC含む）
         atDirectHitProb: { 1: 1/2700, 2: 1/2400, 3: 1/2100, 4: 1/1800, 5: 1/1600, 6: 1/1500 },
-        // からくりレア役→幕間チャンス当選率（条件付き確率）
         makuaiFromRareRate: { 1: 0.033, 2: 0.042, 3: 0.055, 4: 0.068, 5: 0.085, 6: 0.10 },
-        // 奇偶ステージ選択率
         stageOddRate: { 1: 0.55, 2: 0.40, 3: 0.55, 4: 0.40, 5: 0.55, 6: 0.50 },
         stageEvenRate: { 1: 0.40, 2: 0.55, 3: 0.40, 4: 0.55, 5: 0.40, 6: 0.45 },
         sameStageRepeatRate: { 1: 0.03, 2: 0.04, 3: 0.05, 4: 0.07, 5: 0.10, 6: 0.15 },
-        // ED中ランプ出現率
         endingLampGreenRate: { 1: 0.01, 2: 0.02, 3: 0.03, 4: 0.05, 5: 0.08, 6: 0.12 },
-        zones: [200, 400, 600, 800],
-        settingConfirm: SC,
-        // ★ 機種特化フィールド定義
-        customFields: KARAKURI_FIELDS,
-        // ★ 機種特化ベイズ推定関数名
-        customEstimation: "karakuriEstimation"
+        zones: [200, 400, 600, 800], settingConfirm: SC,
+        customFields: KARAKURI_FIELDS, customEstimation: "karakuriEstimation"
     },
-
-    // ═══════════════════════════════════════
-    // 🆕 2025-2026年 最新台（汎用フィールド使用）
-    // ═══════════════════════════════════════
-    "スマスロ化物語": { name: "スマスロ化物語", alias: ["化物語", "物語", "バケモノガタリ"], type: "AT", ceiling: 800, ceilingBenefit: 1800, payoutRate: { 1: 98.0, 2: 99.5, 3: 101.8, 4: 105.5, 5: 110.2, 6: 116.0 }, bellProb: gpi(7.20, 5.70), cherryProb: gpi(35.5, 26.5), watermelonProb: gpi(53, 39), chanceProb: gpi(170, 115), atFirstHitProb: gpi(350, 170), czProb: gpi(130, 70), czSuccessRate: gp(0.33, 0.56), zones: [200, 400, 600], settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
-    "L北斗の拳 転生": { name: "L北斗の拳 転生", alias: ["北斗転生", "転生", "北斗転生2"], type: "AT", ceiling: 999, ceilingBenefit: 2200, payoutRate: { 1: 97.5, 2: 99.0, 3: 101.2, 4: 105.0, 5: 109.5, 6: 115.5 }, bellProb: gpi(7.40, 5.80), cherryProb: gpi(36.5, 27), watermelonProb: gpi(55, 40), chanceProb: gpi(178, 120), atFirstHitProb: gpi(400, 195), czProb: gpi(148, 80), czSuccessRate: gp(0.30, 0.52), zones: [200, 400, 600, 800], settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
+    // ★ Lカバネリ 開門決戦（特化版）
     "Lカバネリ 開門決戦": {
-        name: "Lカバネリ 開門決戦",
-        alias: ["カバネリ開門", "開門決戦", "カバネリ2"],
-        type: "AT",
-        ceiling: 800,
-        ceilingBenefit: 1900,
+        name: "Lカバネリ 開門決戦", alias: ["カバネリ開門", "開門決戦", "カバネリ2"], type: "AT",
+        ceiling: 800, ceilingBenefit: 1900,
         payoutRate: { 1: 97.8, 2: 99.4, 3: 101.7, 4: 105.5, 5: 110.0, 6: 116.2 },
-        bellProb: gpi(7.25, 5.72),
-        cherryProb: gpi(35.8, 26.8),
-        watermelonProb: gpi(53.5, 39.5),
-        chanceProb: gpi(172, 118),
-        atFirstHitProb: gpi(360, 230),
-        czProb: gpi(135, 85),
-        czSuccessRate: gp(0.32, 0.55),
+        bellProb: gpi(7.25, 5.72), cherryProb: gpi(35.8, 26.8), watermelonProb: gpi(53.5, 39.5), chanceProb: gpi(172, 118),
+        atFirstHitProb: gpi(360, 230), czProb: gpi(135, 85), czSuccessRate: gp(0.32, 0.55),
         bonusATDirectProb: { 1: 1/50, 2: 1/40, 3: 1/33, 4: 1/25, 5: 1/20, 6: 1/15 },
-        zones: [200, 400, 600],
-        settingConfirm: SC,
-        customFields: KABANERI_KAIMON_FIELDS,
-        customEstimation: "kabaneriKaimonEstimation",
-        // ★ マイスロOCR設定
-        mySlotConfig: {
-            enabled: true,
-            machineName: "カバネリ 開門決戦",
-            maker: "sammy",
-            // マイスロで取得できるデータ項目とOCR用パターン
+        zones: [200, 400, 600], settingConfirm: SC,
+        customFields: KABANERI_KAIMON_FIELDS, customEstimation: "kabaneriKaimonEstimation",
+        mySlotConfig: { enabled: true, machineName: "カバネリ 開門決戦", maker: "sammy",
             dataMap: [
-                { key: "totalSpins",  label: "総回転数",     patterns: [/(?:総回転|TOTAL|合計|回転数|G数|ゲーム数)[^\d]*(\d[\d,.]{0,8})/i, /(\d[\d,.]{2,6})\s*(?:回転|G\b|ゲーム)/] },
-                { key: "atFirstHit",  label: "AT回数",       patterns: [/(?:AT|ART|AT回数|AT初当)[^\d]*(\d{1,4})/i, /(?:初当[たり]*)[^\d]*(\d{1,4})/] },
-                { key: "big",         label: "BIG",          patterns: [/BIG[^\d]*(\d{1,4})/i] },
-                { key: "reg",         label: "REG",          patterns: [/REG[^\d]*(\d{1,4})/i] },
-                { key: "czEntry",     label: "CZ",           patterns: [/(?:CZ|チャンスゾーン)[^\d]*(\d{1,4})/i] },
-                { key: "bell",        label: "ベル",         patterns: [/(?:ベル|bell)[^\d]*1[/／](\d+\.?\d*)/i, /(?:ベル|bell)[^\d]*(\d{1,5})/i] },
-                { key: "weakCherry",  label: "弱チェリー",   patterns: [/(?:弱チェ|弱チェリー|チェリー)[^\d]*1[/／](\d+\.?\d*)/i, /(?:弱チェ|弱チェリー)[^\d]*(\d{1,5})/i] },
-                { key: "watermelon",  label: "スイカ",       patterns: [/(?:スイカ|すいか)[^\d]*1[/／](\d+\.?\d*)/i, /(?:スイカ|すいか)[^\d]*(\d{1,5})/i] },
-                { key: "chance",      label: "チャンス目",   patterns: [/(?:チャンス目|チャンス|chance)[^\d]*1[/／](\d+\.?\d*)/i, /(?:チャンス目)[^\d]*(\d{1,5})/i] },
-                { key: "diffCoins",   label: "差枚",         patterns: [/(?:差枚|差玉|DIFF)[^\d-]*([+-]?\d[\d,.]{0,6})/i, /([+-]\d[\d,.]{0,6})\s*(?:枚|玉)/] }
+                { key: "totalSpins", label: "総回転数", patterns: [/(?:総回転|TOTAL|合計|回転数|G数)[^\d]*(\d[\d,.]{0,8})/i] },
+                { key: "atFirstHit", label: "AT回数",   patterns: [/(?:AT|AT回数|AT初当)[^\d]*(\d{1,4})/i] },
+                { key: "big",        label: "BIG",      patterns: [/BIG[^\d]*(\d{1,4})/i] },
+                { key: "reg",        label: "REG",      patterns: [/REG[^\d]*(\d{1,4})/i] },
+                { key: "czEntry",    label: "CZ",       patterns: [/(?:CZ|チャンスゾーン)[^\d]*(\d{1,4})/i] },
+                { key: "bell",       label: "ベル",     patterns: [/(?:ベル|bell)[^\d]*1[/／](\d+\.?\d*)/i] },
+                { key: "diffCoins",  label: "差枚",     patterns: [/(?:差枚|DIFF)[^\d-]*([+-]?\d[\d,.]{0,6})/i] }
             ]
         }
     },
-    "L呪術廻戦": { name: "L呪術廻戦", alias: ["呪術", "呪術廻戦", "じゅじゅつ"], type: "AT", ceiling: 999, ceilingBenefit: 2100, payoutRate: { 1: 97.2, 2: 98.8, 3: 101.0, 4: 105.0, 5: 109.8, 6: 116.0 }, bellProb: gpi(7.50, 5.85), cherryProb: gpi(37, 27.5), watermelonProb: gpi(55.5, 40.5), chanceProb: gpi(185, 125), atFirstHitProb: gpi(410, 200), czProb: gpi(150, 82), czSuccessRate: gp(0.29, 0.52), zones: [200, 400, 600, 800], settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
-    "L鬼滅の刃": { name: "L鬼滅の刃", alias: ["鬼滅", "きめつ", "鬼滅の刃"], type: "AT", ceiling: 999, ceilingBenefit: 2200, payoutRate: { 1: 97.0, 2: 98.5, 3: 100.8, 4: 104.8, 5: 109.5, 6: 116.5 }, bellProb: gpi(7.55, 5.88), cherryProb: gpi(37.5, 27.5), watermelonProb: gpi(56, 41), chanceProb: gpi(188, 126), atFirstHitProb: gpi(420, 205), czProb: gpi(155, 84), czSuccessRate: gp(0.28, 0.51), zones: [200, 400, 600, 800], settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
-    "Lチェンソーマン": { name: "Lチェンソーマン", alias: ["チェンソー", "チェンソーマン", "CSM"], type: "AT", ceiling: 999, ceilingBenefit: 2000, payoutRate: { 1: 97.3, 2: 98.9, 3: 101.2, 4: 105.2, 5: 109.8, 6: 115.8 }, bellProb: gpi(7.45, 5.82), cherryProb: gpi(37, 27), watermelonProb: gpi(55, 40), chanceProb: gpi(182, 123), atFirstHitProb: gpi(405, 198), czProb: gpi(148, 80), czSuccessRate: gp(0.30, 0.53), zones: [200, 400, 600, 800], settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
-    "L推しの子": { name: "L推しの子", alias: ["推しの子", "おしのこ"], type: "AT", ceiling: 800, ceilingBenefit: 1700, payoutRate: { 1: 97.8, 2: 99.5, 3: 101.8, 4: 105.3, 5: 109.5, 6: 115.2 }, bellProb: gpi(7.30, 5.78), cherryProb: gpi(36, 26.8), watermelonProb: gpi(54, 40), chanceProb: gpi(175, 120), atFirstHitProb: gpi(370, 182), czProb: gpi(138, 75), czSuccessRate: gp(0.32, 0.55), zones: [200, 400, 600], settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
-    "Lワンパンマン": { name: "Lワンパンマン", alias: ["ワンパン", "ワンパンマン"], type: "AT", ceiling: 999, ceilingBenefit: 1900, payoutRate: { 1: 97.5, 2: 99.2, 3: 101.5, 4: 105.2, 5: 109.5, 6: 115.5 }, bellProb: gpi(7.40, 5.82), cherryProb: gpi(36.5, 27), watermelonProb: gpi(55, 40.5), chanceProb: gpi(180, 122), atFirstHitProb: gpi(395, 195), czProb: gpi(145, 79), czSuccessRate: gp(0.31, 0.53), zones: [200, 400, 600, 800], settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
-    "スマスロ刃牙": { name: "スマスロ刃牙", alias: ["刃牙", "バキ"], type: "AT", ceiling: 999, ceilingBenefit: 1800, payoutRate: { 1: 97.6, 2: 99.3, 3: 101.5, 4: 105.0, 5: 109.2, 6: 115.0 }, bellProb: gpi(7.42, 5.85), cherryProb: gpi(36.8, 27.2), watermelonProb: gpi(55.2, 40.8), chanceProb: gpi(182, 124), atFirstHitProb: gpi(398, 198), czProb: gpi(146, 80), czSuccessRate: gp(0.30, 0.53), zones: [200, 400, 600, 800], settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
-    "Lガンダムシード": { name: "Lガンダムシード", alias: ["ガンダムSEED", "SEED", "シード"], type: "AT", ceiling: 999, ceilingBenefit: 2000, payoutRate: { 1: 97.3, 2: 98.9, 3: 101.2, 4: 105.0, 5: 109.5, 6: 115.5 }, bellProb: gpi(7.48, 5.85), cherryProb: gpi(37, 27.2), watermelonProb: gpi(55.5, 40.5), chanceProb: gpi(184, 125), atFirstHitProb: gpi(405, 200), czProb: gpi(150, 82), czSuccessRate: gp(0.29, 0.52), zones: [200, 400, 600, 800], settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
-
-    // ═══════════════════════════════════════
-    // 定番・人気機種
-    // ═══════════════════════════════════════
-    "スマスロ北斗の拳": { name: "スマスロ北斗の拳", alias: ["北斗", "北斗の拳", "スマスロ北斗"], type: "AT", ceiling: 1268, ceilingBenefit: 2400, payoutRate: { 1: 97.9, 2: 99.2, 3: 101.3, 4: 104.8, 5: 108.4, 6: 114.1 }, bellProb: gpi(7.30, 5.90), cherryProb: gpi(36, 30), watermelonProb: gpi(55, 42), chanceProb: gpi(180, 140), atFirstHitProb: gpi(430, 250), czProb: gpi(160, 95), czSuccessRate: gp(0.30, 0.48), zones: [200, 400, 600, 800], settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
-    "ヴァルヴレイヴ": { name: "ヴァルヴレイヴ", alias: ["ヴヴヴ", "VVV", "革命機"], type: "AT", ceiling: 999, ceilingBenefit: 2000, payoutRate: { 1: 97.0, 2: 98.8, 3: 101.0, 4: 105.5, 5: 110.0, 6: 116.0 }, bellProb: gpi(7.80, 5.90), cherryProb: gpi(40, 28), watermelonProb: gpi(60, 42), chanceProb: gpi(200, 135), atFirstHitProb: gpi(450, 230), czProb: gpi(170, 95), czSuccessRate: gp(0.25, 0.48), zones: [200, 400, 600, 800], settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
-    "モンキーターン": { name: "モンキーターン", alias: ["モンキー"], type: "AT", ceiling: 800, ceilingBenefit: 1500, payoutRate: { 1: 97.8, 2: 99.5, 3: 101.8, 4: 105.2, 5: 109.5, 6: 114.5 }, bellProb: gpi(7.40, 6.00), cherryProb: gpi(37, 27.5), watermelonProb: gpi(56, 41), chanceProb: gpi(185, 125), atFirstHitProb: gpi(380, 190), czProb: gpi(145, 80), czSuccessRate: gp(0.30, 0.52), zones: [200, 400, 600], settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
-    "甲鉄城のカバネリ": { name: "甲鉄城のカバネリ", alias: ["カバネリ"], type: "AT", ceiling: 999, ceilingBenefit: 1900, payoutRate: { 1: 97.8, 2: 99.4, 3: 101.6, 4: 105.3, 5: 109.8, 6: 115.5 }, bellProb: gpi(7.35, 5.85), cherryProb: gpi(36.5, 27), watermelonProb: gpi(54, 40), chanceProb: gpi(175, 120), atFirstHitProb: gpi(390, 195), czProb: gpi(142, 78), czSuccessRate: gp(0.31, 0.53), zones: [200, 400, 600, 800], settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
-    "バジリスク絆2": { name: "バジリスク絆2", alias: ["バジリスク", "絆2", "絆"], type: "AT", ceiling: 800, ceilingBenefit: 1600, payoutRate: { 1: 97.4, 2: 99.0, 3: 101.2, 4: 104.8, 5: 108.5, 6: 114.2 }, bellProb: gpi(7.55, 6.05), cherryProb: gpi(38.5, 29), watermelonProb: gpi(57, 43), chanceProb: gpi(192, 135), atFirstHitProb: gpi(410, 210), czProb: gpi(152, 86), czSuccessRate: gp(0.28, 0.49), zones: [200, 400, 600], settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
-    "Re:ゼロ": { name: "Re:ゼロ", alias: ["リゼロ", "レゼロ", "re:zero"], type: "AT", ceiling: 999, ceilingBenefit: 2000, payoutRate: { 1: 97.0, 2: 98.5, 3: 100.8, 4: 104.5, 5: 109.0, 6: 115.8 }, bellProb: gpi(7.70, 5.95), cherryProb: gpi(39.5, 28.5), watermelonProb: gpi(59, 42), chanceProb: gpi(198, 130), atFirstHitProb: gpi(440, 220), czProb: gpi(165, 90), czSuccessRate: gp(0.26, 0.48), zones: [200, 400, 600, 800], settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
-    "コードギアス": { name: "コードギアス", alias: ["ギアス", "コドギア"], type: "AT", ceiling: 999, ceilingBenefit: 1800, payoutRate: { 1: 97.6, 2: 99.2, 3: 101.4, 4: 105.0, 5: 109.3, 6: 115.0 }, bellProb: gpi(7.45, 5.90), cherryProb: gpi(37, 27.5), watermelonProb: gpi(55, 40.5), chanceProb: gpi(182, 125), atFirstHitProb: gpi(395, 200), czProb: gpi(148, 82), czSuccessRate: gp(0.30, 0.52), zones: [200, 400, 600, 800], settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
-    "押忍!番長ZERO": { name: "押忍!番長ZERO", alias: ["番長ZERO", "番長", "番長0"], type: "AT", ceiling: 800, ceilingBenefit: 1500, payoutRate: { 1: 97.7, 2: 99.3, 3: 101.5, 4: 105.0, 5: 109.2, 6: 114.8 }, bellProb: gpi(7.40, 5.90), cherryProb: gpi(36.5, 27), watermelonProb: gpi(54, 40), chanceProb: gpi(178, 122), atFirstHitProb: gpi(370, 185), czProb: gpi(140, 78), czSuccessRate: gp(0.32, 0.54), zones: [200, 400, 600], settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
-    "魔法少女まどか☆マギカ": { name: "魔法少女まどか☆マギカ", alias: ["まどマギ", "まどか", "マギカ"], type: "AT", ceiling: 999, ceilingBenefit: 2000, payoutRate: { 1: 97.2, 2: 98.8, 3: 101.0, 4: 104.8, 5: 109.2, 6: 115.5 }, bellProb: gpi(7.60, 5.90), cherryProb: gpi(39, 28), watermelonProb: gpi(58, 41), chanceProb: gpi(195, 128), atFirstHitProb: gpi(430, 215), czProb: gpi(160, 88), czSuccessRate: gp(0.27, 0.50), zones: [200, 400, 600, 800], settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
-    "沖ドキ!GOLD": { name: "沖ドキ!GOLD", alias: ["沖ドキ", "沖ドキゴールド"], type: "AT", ceiling: 999, ceilingBenefit: 1600, payoutRate: { 1: 97.8, 2: 99.5, 3: 101.8, 4: 105.2, 5: 109.0, 6: 114.5 }, bellProb: gpi(7.38, 5.88), cherryProb: gpi(36, 26.5), watermelonProb: gpi(53, 39), chanceProb: gpi(175, 120), atFirstHitProb: gpi(370, 185), czProb: gpi(138, 76), czSuccessRate: gp(0.32, 0.55), zones: [200, 400, 600, 800], settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
-    "転生したらスライムだった件": { name: "転生したらスライムだった件", alias: ["転スラ", "スライム"], type: "AT", ceiling: 999, ceilingBenefit: 1800, payoutRate: { 1: 97.3, 2: 99.0, 3: 101.3, 4: 104.9, 5: 109.2, 6: 115.0 }, bellProb: gpi(7.55, 5.95), cherryProb: gpi(38, 28), watermelonProb: gpi(56.5, 41), chanceProb: gpi(188, 126), atFirstHitProb: gpi(405, 205), czProb: gpi(152, 84), czSuccessRate: gp(0.28, 0.50), zones: [200, 400, 600, 800], settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
-    "ソードアートオンライン": { name: "ソードアートオンライン", alias: ["SAO"], type: "AT", ceiling: 999, ceilingBenefit: 1800, payoutRate: { 1: 97.4, 2: 99.1, 3: 101.4, 4: 105.0, 5: 109.1, 6: 115.1 }, bellProb: gpi(7.50, 5.92), cherryProb: gpi(37.5, 27.5), watermelonProb: gpi(55.5, 40.5), chanceProb: gpi(184, 125), atFirstHitProb: gpi(400, 200), czProb: gpi(148, 82), czSuccessRate: gp(0.30, 0.52), zones: [200, 400, 600, 800], settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
-    "L新・番長4": { name: "L新・番長4", alias: ["番長4", "新番長"], type: "AT", ceiling: 800, ceilingBenefit: 1700, payoutRate: { 1: 97.8, 2: 99.5, 3: 101.8, 4: 105.5, 5: 109.8, 6: 115.5 }, bellProb: gpi(7.28, 5.75), cherryProb: gpi(35.8, 26.5), watermelonProb: gpi(53.5, 39.5), chanceProb: gpi(172, 118), atFirstHitProb: gpi(358, 175), czProb: gpi(132, 72), czSuccessRate: gp(0.33, 0.56), zones: [200, 400, 600], settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
-
-    // ═══════════════════════════════════════
-    // Aタイプ
-    // ═══════════════════════════════════════
-    "マイジャグラーV": { name: "マイジャグラーV", alias: ["マイジャグ", "ジャグラー", "マイジャグラー"], type: "Aタイプ", ceiling: 0, ceilingBenefit: 0, payoutRate: { 1: 97.0, 2: 98.7, 3: 100.9, 4: 104.1, 5: 106.6, 6: 109.4 }, bellProb: gpi(7.30, 5.80), cherryProb: gpi(36.0, 33.0), watermelonProb: gpi(55, 55), chanceProb: gpi(180, 180), atFirstHitProb: gpi(290, 130), czProb: gpi(999, 999), czSuccessRate: gp(0, 0), zones: [], settingConfirm: SC, customFields: GENERIC_A_TYPE_FIELDS },
-    "ファンキージャグラー2": { name: "ファンキージャグラー2", alias: ["ファンキー", "ファンジャグ"], type: "Aタイプ", ceiling: 0, ceilingBenefit: 0, payoutRate: { 1: 97.0, 2: 98.5, 3: 100.5, 4: 103.5, 5: 106.5, 6: 109.0 }, bellProb: gpi(7.35, 5.85), cherryProb: gpi(36.5, 33.5), watermelonProb: gpi(55, 55), chanceProb: gpi(180, 180), atFirstHitProb: gpi(295, 132), czProb: gpi(999, 999), czSuccessRate: gp(0, 0), zones: [], settingConfirm: SC, customFields: GENERIC_A_TYPE_FIELDS },
-    "ハナビ": { name: "ハナビ", alias: ["花火"], type: "Aタイプ", ceiling: 0, ceilingBenefit: 0, payoutRate: { 1: 97.5, 2: 99.0, 3: 101.0, 4: 104.0, 5: 107.0, 6: 110.0 }, bellProb: gpi(7.30, 5.80), cherryProb: gpi(35.0, 32.0), watermelonProb: gpi(55, 55), chanceProb: gpi(180, 180), atFirstHitProb: gpi(280, 125), czProb: gpi(999, 999), czSuccessRate: gp(0, 0), zones: [], settingConfirm: SC, customFields: GENERIC_A_TYPE_FIELDS },
-    "ディスクアップ2": { name: "ディスクアップ2", alias: ["ディスクアップ", "ディスク"], type: "Aタイプ", ceiling: 0, ceilingBenefit: 0, payoutRate: { 1: 97.8, 2: 99.4, 3: 101.5, 4: 104.5, 5: 107.5, 6: 110.5 }, bellProb: gpi(7.28, 5.78), cherryProb: gpi(35.5, 32.5), watermelonProb: gpi(55, 55), chanceProb: gpi(180, 180), atFirstHitProb: gpi(275, 122), czProb: gpi(999, 999), czSuccessRate: gp(0, 0), zones: [], settingConfirm: SC, customFields: GENERIC_A_TYPE_FIELDS }
+    // ─── 2025〜2026年 現行スマスロ・AT機 ───
+    "スマスロ化物語":              { name: "スマスロ化物語",              alias: ["化物語","物語","バケモノガタリ"],      type: "AT", ceiling: 800,  ceilingBenefit: 1800, payoutRate: { 1: 98.0, 2: 99.5, 3: 101.8, 4: 105.5, 5: 110.2, 6: 116.0 }, bellProb: gpi(7.20,5.70), cherryProb: gpi(35.5,26.5), watermelonProb: gpi(53,39),   chanceProb: gpi(170,115), atFirstHitProb: gpi(350,170), czProb: gpi(130,70), czSuccessRate: gp(0.33,0.56), zones: [200,400,600],       settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
+    "スマスロ北斗の拳":            { name: "スマスロ北斗の拳",            alias: ["北斗","北斗の拳","スマスロ北斗"],     type: "AT", ceiling: 1268, ceilingBenefit: 2400, payoutRate: { 1: 97.9, 2: 99.2, 3: 101.3, 4: 104.8, 5: 108.4, 6: 114.1 }, bellProb: gpi(7.30,5.90), cherryProb: gpi(36,30),     watermelonProb: gpi(55,42),   chanceProb: gpi(180,140), atFirstHitProb: gpi(430,250), czProb: gpi(160,95), czSuccessRate: gp(0.30,0.48), zones: [200,400,600,800],   settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
+    "L北斗の拳":                   { name: "L北斗の拳",                   alias: ["L北斗","北斗L"],                     type: "AT", ceiling: 999,  ceilingBenefit: 2200, payoutRate: { 1: 97.6, 2: 99.2, 3: 101.4, 4: 105.2, 5: 109.6, 6: 115.8 }, bellProb: gpi(7.35,5.82), cherryProb: gpi(36.2,27.0), watermelonProb: gpi(54.5,40.2), chanceProb: gpi(176,119), atFirstHitProb: gpi(395,192), czProb: gpi(145,78), czSuccessRate: gp(0.31,0.53), zones: [200,400,600,800],   settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
+    "L北斗の拳 転生の章2":         { name: "L北斗の拳 転生の章2",         alias: ["北斗転生2","転生の章2","北斗転生"],  type: "AT", ceiling: 999,  ceilingBenefit: 2200, payoutRate: { 1: 97.5, 2: 99.0, 3: 101.2, 4: 105.0, 5: 109.5, 6: 115.5 }, bellProb: gpi(7.40,5.80), cherryProb: gpi(36.5,27),   watermelonProb: gpi(55,40),   chanceProb: gpi(178,120), atFirstHitProb: gpi(400,195), czProb: gpi(148,80), czSuccessRate: gp(0.30,0.52), zones: [200,400,600,800],   settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
+    "スマスロ東京喰種":            { name: "スマスロ東京喰種",            alias: ["東京喰種","トーキョーグール","喰種"], type: "AT", ceiling: 999,  ceilingBenefit: 2000, payoutRate: { 1: 97.3, 2: 98.9, 3: 101.1, 4: 105.0, 5: 109.5, 6: 115.8 }, bellProb: gpi(7.45,5.82), cherryProb: gpi(37,27.2),   watermelonProb: gpi(55.5,40.5), chanceProb: gpi(183,124), atFirstHitProb: gpi(408,200), czProb: gpi(152,83), czSuccessRate: gp(0.29,0.52), zones: [200,400,600,800],   settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
+    "スマスロ東京リベンジャーズ":  { name: "スマスロ東京リベンジャーズ",  alias: ["東リベ","東京リベンジャーズ"],       type: "AT", ceiling: 999,  ceilingBenefit: 1900, payoutRate: { 1: 97.4, 2: 99.0, 3: 101.3, 4: 105.1, 5: 109.4, 6: 115.2 }, bellProb: gpi(7.42,5.83), cherryProb: gpi(36.8,27.1), watermelonProb: gpi(55.2,40.5), chanceProb: gpi(181,122), atFirstHitProb: gpi(395,196), czProb: gpi(146,80), czSuccessRate: gp(0.30,0.53), zones: [200,400,600,800],   settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
+    "Lパチスロ ヴァルヴレイヴ":    { name: "Lパチスロ ヴァルヴレイヴ",    alias: ["ヴヴヴ","VVV","革命機"],            type: "AT", ceiling: 999,  ceilingBenefit: 2000, payoutRate: { 1: 97.0, 2: 98.8, 3: 101.0, 4: 105.5, 5: 110.0, 6: 116.0 }, bellProb: gpi(7.80,5.90), cherryProb: gpi(40,28),     watermelonProb: gpi(60,42),   chanceProb: gpi(200,135), atFirstHitProb: gpi(450,230), czProb: gpi(170,95), czSuccessRate: gp(0.25,0.48), zones: [200,400,600,800],   settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
+    "Lパチスロ ヴァルヴレイヴ2":   { name: "Lパチスロ ヴァルヴレイヴ2",   alias: ["ヴヴヴ2","VVV2","革命機2"],         type: "AT", ceiling: 999,  ceilingBenefit: 2100, payoutRate: { 1: 97.0, 2: 98.8, 3: 101.0, 4: 105.5, 5: 110.2, 6: 116.5 }, bellProb: gpi(7.78,5.88), cherryProb: gpi(39.5,27.8), watermelonProb: gpi(59,41.5), chanceProb: gpi(198,133), atFirstHitProb: gpi(445,228), czProb: gpi(168,93), czSuccessRate: gp(0.26,0.49), zones: [200,400,600,800],   settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
+    "LモンキーターンV":            { name: "LモンキーターンV",            alias: ["モンキーターン","モンキー"],         type: "AT", ceiling: 800,  ceilingBenefit: 1500, payoutRate: { 1: 97.8, 2: 99.5, 3: 101.8, 4: 105.2, 5: 109.5, 6: 114.5 }, bellProb: gpi(7.40,6.00), cherryProb: gpi(37,27.5),   watermelonProb: gpi(56,41),   chanceProb: gpi(185,125), atFirstHitProb: gpi(380,190), czProb: gpi(145,80), czSuccessRate: gp(0.30,0.52), zones: [200,400,600],       settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
+    "L転生したら剣でした":         { name: "L転生したら剣でした",         alias: ["転剣","てんけん","転生剣"],          type: "AT", ceiling: 999,  ceilingBenefit: 1900, payoutRate: { 1: 97.2, 2: 98.8, 3: 101.0, 4: 104.9, 5: 109.3, 6: 115.5 }, bellProb: gpi(7.55,5.90), cherryProb: gpi(38,28),     watermelonProb: gpi(57,41.5), chanceProb: gpi(190,128), atFirstHitProb: gpi(415,208), czProb: gpi(155,86), czSuccessRate: gp(0.28,0.50), zones: [200,400,600,800],   settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
+    "Lパチスロ ガンダムSEED":      { name: "Lパチスロ ガンダムSEED",      alias: ["ガンダムシード","SEED","シード"],    type: "AT", ceiling: 999,  ceilingBenefit: 2000, payoutRate: { 1: 97.3, 2: 98.9, 3: 101.2, 4: 105.0, 5: 109.5, 6: 115.5 }, bellProb: gpi(7.48,5.85), cherryProb: gpi(37,27.2),   watermelonProb: gpi(55.5,40.5), chanceProb: gpi(184,125), atFirstHitProb: gpi(405,200), czProb: gpi(150,82), czSuccessRate: gp(0.29,0.52), zones: [200,400,600,800],   settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
+    "スマスロ マギアレコード":      { name: "スマスロ マギアレコード",      alias: ["マギアレコード","マギレコ","まどマギ外伝"], type: "AT", ceiling: 999, ceilingBenefit: 2000, payoutRate: { 1: 97.2, 2: 98.8, 3: 101.0, 4: 104.8, 5: 109.2, 6: 115.5 }, bellProb: gpi(7.60,5.90), cherryProb: gpi(39,28), watermelonProb: gpi(58,41), chanceProb: gpi(195,128), atFirstHitProb: gpi(430,215), czProb: gpi(160,88), czSuccessRate: gp(0.27,0.50), zones: [200,400,600,800], settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
+    "スマスロ甲鉄城のカバネリ 海門決戦": { name: "スマスロ甲鉄城のカバネリ 海門決戦", alias: ["海門決戦","カバネリ海門","スマカバネリ"], type: "AT", ceiling: 800, ceilingBenefit: 2000, payoutRate: { 1: 97.8, 2: 99.5, 3: 101.8, 4: 105.5, 5: 110.2, 6: 116.5 }, bellProb: gpi(7.20,5.68), cherryProb: gpi(35.5,26.5), watermelonProb: gpi(53.0,39.0), chanceProb: gpi(170,115), atFirstHitProb: gpi(355,225), czProb: gpi(130,82), czSuccessRate: gp(0.33,0.57), zones: [200,400,600], settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
+    "バジリスク絆2":               { name: "バジリスク絆2",               alias: ["バジリスク","絆2","絆"],              type: "AT", ceiling: 800,  ceilingBenefit: 1600, payoutRate: { 1: 97.4, 2: 99.0, 3: 101.2, 4: 104.8, 5: 108.5, 6: 114.2 }, bellProb: gpi(7.55,6.05), cherryProb: gpi(38.5,29),   watermelonProb: gpi(57,43),   chanceProb: gpi(192,135), atFirstHitProb: gpi(410,210), czProb: gpi(152,86), czSuccessRate: gp(0.28,0.49), zones: [200,400,600],       settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
+    "押忍!番長ZERO":               { name: "押忍!番長ZERO",               alias: ["番長ZERO","番長","番長0"],           type: "AT", ceiling: 800,  ceilingBenefit: 1500, payoutRate: { 1: 97.7, 2: 99.3, 3: 101.5, 4: 105.0, 5: 109.2, 6: 114.8 }, bellProb: gpi(7.40,5.90), cherryProb: gpi(36.5,27),   watermelonProb: gpi(54,40),   chanceProb: gpi(178,122), atFirstHitProb: gpi(370,185), czProb: gpi(140,78), czSuccessRate: gp(0.32,0.54), zones: [200,400,600],       settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
+    // ─── 2026年 導入済み ───
+    "L鉄拳6":                      { name: "L鉄拳6",                      alias: ["鉄拳","てっけん"],                   type: "AT", ceiling: 999,  ceilingBenefit: 1900, payoutRate: { 1: 97.4, 2: 99.0, 3: 101.2, 4: 105.0, 5: 109.3, 6: 115.2 }, bellProb: gpi(7.43,5.84), cherryProb: gpi(36.9,27.2), watermelonProb: gpi(55.3,40.6), chanceProb: gpi(182,123), atFirstHitProb: gpi(397,197), czProb: gpi(147,81), czSuccessRate: gp(0.30,0.52), zones: [200,400,600,800],   settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
+    "L攻殻機動隊":                 { name: "L攻殻機動隊",                 alias: ["攻殻","こうかく"],                   type: "AT", ceiling: 999,  ceilingBenefit: 2000, payoutRate: { 1: 97.3, 2: 98.9, 3: 101.1, 4: 105.0, 5: 109.4, 6: 115.6 }, bellProb: gpi(7.46,5.84), cherryProb: gpi(37.0,27.3), watermelonProb: gpi(55.5,40.7), chanceProb: gpi(183,124), atFirstHitProb: gpi(402,199), czProb: gpi(149,82), czSuccessRate: gp(0.30,0.52), zones: [200,400,600,800],   settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
+    "L範馬刃牙":                   { name: "L範馬刃牙",                   alias: ["刃牙","バキ","範馬"],                type: "AT", ceiling: 999,  ceilingBenefit: 1900, payoutRate: { 1: 97.4, 2: 99.0, 3: 101.3, 4: 105.1, 5: 109.4, 6: 115.3 }, bellProb: gpi(7.43,5.83), cherryProb: gpi(36.9,27.2), watermelonProb: gpi(55.3,40.6), chanceProb: gpi(181,123), atFirstHitProb: gpi(396,197), czProb: gpi(146,80), czSuccessRate: gp(0.30,0.53), zones: [200,400,600,800],   settingConfirm: SC, customFields: GENERIC_AT_FIELDS },
+    // ─── Aタイプ 現行機種 ───
+    "マイジャグラーV":             { name: "マイジャグラーV",             alias: ["マイジャグ","ジャグラー","マイジャグラー"], type: "Aタイプ", ceiling: 0, ceilingBenefit: 0, payoutRate: { 1: 97.0, 2: 98.7, 3: 100.9, 4: 104.1, 5: 106.6, 6: 109.4 }, bellProb: gpi(7.30,5.80), cherryProb: gpi(36.0,33.0), watermelonProb: gpi(55,55), chanceProb: gpi(180,180), atFirstHitProb: gpi(290,130), czProb: gpi(999,999), czSuccessRate: gp(0,0), zones: [], settingConfirm: SC, customFields: GENERIC_A_TYPE_FIELDS },
+    "ファンキージャグラー2":       { name: "ファンキージャグラー2",       alias: ["ファンキー","ファンジャグ"],          type: "Aタイプ", ceiling: 0, ceilingBenefit: 0, payoutRate: { 1: 97.0, 2: 98.5, 3: 100.5, 4: 103.5, 5: 106.5, 6: 109.0 }, bellProb: gpi(7.35,5.85), cherryProb: gpi(36.5,33.5), watermelonProb: gpi(55,55), chanceProb: gpi(180,180), atFirstHitProb: gpi(295,132), czProb: gpi(999,999), czSuccessRate: gp(0,0), zones: [], settingConfirm: SC, customFields: GENERIC_A_TYPE_FIELDS },
+    "Lハナビ":                     { name: "Lハナビ",                     alias: ["ハナビ","花火"],                     type: "Aタイプ", ceiling: 0, ceilingBenefit: 0, payoutRate: { 1: 97.5, 2: 99.0, 3: 101.0, 4: 104.0, 5: 107.0, 6: 110.0 }, bellProb: gpi(7.30,5.80), cherryProb: gpi(35.0,32.0), watermelonProb: gpi(55,55), chanceProb: gpi(180,180), atFirstHitProb: gpi(280,125), czProb: gpi(999,999), czSuccessRate: gp(0,0), zones: [], settingConfirm: SC, customFields: GENERIC_A_TYPE_FIELDS },
+    "A-SLOT+ ディスクアップULTRA REMIX": { name: "A-SLOT+ ディスクアップULTRA REMIX", alias: ["ディスクアップ","ディスク"], type: "Aタイプ", ceiling: 0, ceilingBenefit: 0, payoutRate: { 1: 97.8, 2: 99.4, 3: 101.5, 4: 104.5, 5: 107.5, 6: 110.5 }, bellProb: gpi(7.28,5.78), cherryProb: gpi(35.5,32.5), watermelonProb: gpi(55,55), chanceProb: gpi(180,180), atFirstHitProb: gpi(275,122), czProb: gpi(999,999), czSuccessRate: gp(0,0), zones: [], settingConfirm: SC, customFields: GENERIC_A_TYPE_FIELDS }
 };
+
+
 
 // ═══════════════════════════════════════════════════════
 // ★ 全AT機種に汎用マイスロ/写真解析を自動付与
