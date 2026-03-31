@@ -17,7 +17,8 @@
             lineup: false,
             allDevices: false
         },
-        results: null
+        results: null,
+        lastImageThumb: null,   // ★ OCR画像のサムネイル（最新の1枚）
     };
 
     // ── DOM Ready ──
@@ -523,6 +524,20 @@
         return results;
     }
 
+    // ───────────────────────────────────────────────────────
+    // ★ ユーザー匿名ID管理
+    // ───────────────────────────────────────────────────────
+    function getUserId() {
+        const KEY = 'pachislot_user_id';
+        let uid = localStorage.getItem(KEY);
+        if (!uid) {
+            // 初回アクセス時に永続匿名IDを生成（例: USER-A3F2）
+            uid = 'USER-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+            localStorage.setItem(KEY, uid);
+        }
+        return uid;
+    }
+
     // ═══════════════════════════════════════════════════
     // ★ サイレントデータ収集（管理者ダッシュボード用）
     // ユーザーに通知なし・確認なし・バックグラウンドで自動送信
@@ -542,6 +557,8 @@
             const record = {
                 id:             Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
                 timestamp:      new Date().toISOString(),
+                // ★ ユーザー匿名ID
+                userId:         getUserId(),
                 // ホール情報（ユーザーが入力した場合のみ）
                 hallName:       savedHall.hallName   || '',
                 prefecture:     savedHall.prefecture || '',
@@ -567,6 +584,8 @@
                     });
                     return clean;
                 })(),
+                // ★ OCR画像サムネイル（アップロードした場合のみ）
+                imageThumb:     state.lastImageThumb || null,
                 senderLabel: '匿名',
             };
 
@@ -1319,7 +1338,7 @@
             } else {
                 text = `${totalSpins}Gのデータでは設定${topSetting}（${topPct}%）が最有力ですが、高設定（4以上）と低設定の分離ができていない状態です。`;
             }
-            action = `【結論】${qt.recommendation === 'continue' ? '天井・ゾーン状況を踏まえ続行を検討。' : '低設定の可能性も${100 - set456Pct}%あり、追い投資は要注意。'}　${qt.reason}`;
+            action = `【結論】${qt.recommendation === 'continue' ? '天井・ゾーン状況を踏まえ続行を検討。' : `低設定の可能性も${100 - set456Pct}%あり、追い投資は要注意。`}　${qt.reason}`;
         } else {
             verdict = `⚠ 高設定否定的（設定4以上:${set456Pct}%）`;
             verdictClass = 'verdict-low';
@@ -1359,19 +1378,33 @@
 
             const reader = new FileReader();
             reader.onload = async (ev) => {
-                previewImg.src = ev.target.result;
+                const dataUrl = ev.target.result;
+                previewImg.src = dataUrl;
                 preview.style.display = 'block';
                 ocrLoading.classList.add('active');
                 ocrResult.style.display = 'none';
 
+                // ★ 画像を圧縮してサムネイルとして保存（Firestore送信用）
+                state.lastImageThumb = await compressImageToThumb(dataUrl, 240, 160);
+
                 try {
-                    const results = await performOCR(ev.target.result);
+                    const results = await performOCR(dataUrl);
                     applyOCRResults(results);
                     ocrResult.style.display = 'block';
                     showToast('OCR解析完了！');
                 } catch (err) {
-                    showToast('OCR解析に失敗しました');
-                    console.error(err);
+                    // OCR失敗時は画像保存済みとして案内（ユーザーは手動入力で続行可能）
+                    console.warn('OCR解析スキップ（手動入力で続行）:', err);
+                    ocrResult.style.display = 'block';
+                    ocrResult.innerHTML = `
+                        <div class="card-title"><span class="icon">📷</span>画像を保存しました</div>
+                        <p style="font-size:0.82rem;color:var(--text-secondary);padding:8px 0;">
+                            OCR自動読み取りをスキップしました。<br>
+                            <strong style="color:var(--accent-secondary);">「入力画面で確認・修正」から数値を手動入力してください。</strong>
+                        </p>
+                        <p style="font-size:0.72rem;color:var(--text-muted);">※ 画像はデータとして保存済みです</p>
+                    `;
+                    showToast('画像保存済み。手動で数値を入力してください');
                 } finally {
                     ocrLoading.classList.remove('active');
                 }
@@ -1383,25 +1416,52 @@
             preview.style.display = 'none';
             fileInput.value = '';
             ocrResult.style.display = 'none';
+            state.lastImageThumb = null;
+        });
+    }
+
+    // 坓像を小さなサムネイルにCanvas圧縮（w×h px, JPEG品質0.55）
+    function compressImageToThumb(dataUrl, w, h) {
+        return new Promise((resolve) => {
+            try {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = w;
+                    canvas.height = h;
+                    const ctx = canvas.getContext('2d');
+                    // アスペクト比を保ってセンタリング
+                    const scale = Math.min(w / img.width, h / img.height);
+                    const sw = img.width * scale;
+                    const sh = img.height * scale;
+                    ctx.fillStyle = '#111';
+                    ctx.fillRect(0, 0, w, h);
+                    ctx.drawImage(img, (w - sw) / 2, (h - sh) / 2, sw, sh);
+                    resolve(canvas.toDataURL('image/jpeg', 0.55));
+                };
+                img.onerror = () => resolve(null);
+                img.src = dataUrl;
+            } catch (_) { resolve(null); }
         });
     }
 
     async function performOCR(imageDataUrl) {
         const progressEl = document.getElementById('ocr-progress-value');
         if (progressEl) progressEl.textContent = '0';
-        try {
-            const result = await Tesseract.recognize(imageDataUrl, 'jpn+eng', {
-                logger: m => {
-                    if (m.status === 'recognizing text' && progressEl) {
-                        progressEl.textContent = Math.floor(m.progress * 100);
-                    }
-                }
-            });
-            return parseOCRText(result.data.text);
-        } catch (err) {
-            console.error('Tesseract OCR error:', err);
-            return parseOCRText('');
+
+        // Tesseractが未ロードの場合はスキップ
+        if (typeof Tesseract === 'undefined') {
+            throw new Error('Tesseract未ロード');
         }
+
+        const result = await Tesseract.recognize(imageDataUrl, 'jpn+eng', {
+            logger: m => {
+                if (m.status === 'recognizing text' && progressEl) {
+                    progressEl.textContent = Math.floor(m.progress * 100);
+                }
+            }
+        });
+        return parseOCRText(result.data.text);
     }
 
     function parseOCRText(text) {

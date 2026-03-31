@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Firebase セットアップ | PACHISLOT AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a14; --surface: #13131f; --card: #1a1a2e;
+      --accent: #7c3aed; --accent2: #06b6d4; --green: #10b981;
+      --orange: #f59e0b; --red: #ef4444;
+      --text: #e2e8f0; --sub: #94a3b8; --muted: #475569;
+      --border: rgba(255,255,255,0.08);
+    }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 0; }
+
+    .page-header {
+      background: linear-gradient(135deg, rgba(124,58,237,0.3), rgba(6,182,212,0.2));
+      border-bottom: 1px solid var(--border);
+      padding: 32px 40px;
+      text-align: center;
+    }
+    .page-header h1 { font-size: 2rem; font-weight: 800; background: linear-gradient(135deg, #a78bfa, #22d3ee); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px; }
+    .page-header p { color: var(--sub); font-size: 1rem; }
+
+    .container { max-width: 860px; margin: 0 auto; padding: 40px 24px 80px; }
+
+    .alert {
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 28px;
+      display: flex; gap: 12px; align-items: flex-start;
+    }
+    .alert-info { background: rgba(6,182,212,0.1); border: 1px solid rgba(6,182,212,0.3); color: #67e8f9; }
+    .alert-warn { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); color: #fcd34d; }
+    .alert-icon { font-size: 1.2rem; flex-shrink: 0; }
+    .alert-text { font-size: 0.88rem; line-height: 1.6; }
+    .alert-text strong { font-weight: 700; display: block; margin-bottom: 4px; }
+
+    .step-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .step-header {
+      display: flex; align-items: center; gap: 16px;
+      padding: 20px 24px;
+      background: rgba(255,255,255,0.02);
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+    .step-num {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), #a855f7);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.9rem; font-weight: 800;
+      flex-shrink: 0;
+    }
+    .step-num.done { background: linear-gradient(135deg, var(--green), #34d399); }
+    .step-title { font-size: 1rem; font-weight: 700; flex: 1; }
+    .step-time { font-size: 0.75rem; color: var(--muted); white-space: nowrap; }
+    .step-body { padding: 24px; display: none; }
+    .step-body.open { display: block; }
+
+    .step-text { font-size: 0.88rem; color: var(--sub); line-height: 1.7; margin-bottom: 16px; }
+    .step-text strong { color: var(--text); }
+
+    .img-placeholder {
+      background: rgba(255,255,255,0.03);
+      border: 2px dashed rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 20px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.82rem;
+      margin: 12px 0;
+    }
+
+    .code-block {
+      background: #0d1117;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 16px 20px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.82rem;
+      color: #e6edf3;
+      margin: 12px 0;
+      overflow-x: auto;
+      line-height: 1.6;
+    }
+    .code-block .kw { color: #ff7b72; }
+    .code-block .str { color: #79c0ff; }
+    .code-block .comment { color: #8b949e; }
+
+    .click-target {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(124,58,237,0.2);
+      border: 1px solid rgba(124,58,237,0.4);
+      border-radius: 6px;
+      padding: 3px 10px;
+      font-size: 0.82rem;
+      color: #a78bfa;
+      font-weight: 600;
+    }
+
+    .input-field {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 10px 14px;
+      width: 100%;
+      font-size: 0.9rem;
+      font-family: inherit;
+      outline: none;
+      margin: 8px 0;
+      transition: border-color 0.2s;
+    }
+    .input-field:focus { border-color: var(--accent); }
+
+    .label { font-size: 0.78rem; color: var(--sub); font-weight: 600; margin-top: 12px; display: block; }
+
+    .btn {
+      border: none; border-radius: 10px; padding: 12px 24px;
+      font-family: inherit; font-size: 0.9rem; font-weight: 700;
+      cursor: pointer; transition: opacity 0.2s, transform 0.1s;
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary { background: linear-gradient(135deg, var(--accent), #a855f7); color: #fff; }
+    .btn-success { background: linear-gradient(135deg, #059669, var(--green)); color: #fff; }
+    .btn-full { width: 100%; justify-content: center; margin-top: 16px; }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--sub); }
+
+    .success-banner {
+      background: rgba(16,185,129,0.15);
+      border: 1px solid rgba(16,185,129,0.4);
+      border-radius: 12px;
+      padding: 20px 24px;
+      display: none;
+      margin-top: 16px;
+    }
+    .success-banner.show { display: block; }
+    .success-banner h3 { color: #34d399; font-size: 1rem; margin-bottom: 8px; }
+    .success-banner p { color: var(--sub); font-size: 0.85rem; line-height: 1.6; }
+
+    .progress-bar-wrap { background: rgba(255,255,255,0.05); border-radius: 999px; height: 8px; margin-top: 20px; }
+    .progress-bar { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 0.5s ease; }
+
+    .config-display {
+      background: #0d1117;
+      border: 1px solid rgba(16,185,129,0.3);
+      border-radius: 10px;
+      padding: 16px 20px;
+      font-family: monospace;
+      font-size: 0.82rem;
+      color: #34d399;
+      margin: 16px 0;
+      display: none;
+    }
+    .config-display.show { display: block; }
+
+    .nav-footer {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: rgba(10,10,20,0.95);
+      border-top: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex; justify-content: space-between; align-items: center;
+      backdrop-filter: blur(12px);
+    }
+    .nav-footer-progress { font-size: 0.82rem; color: var(--sub); }
+    .nav-footer-status { font-size: 0.82rem; font-weight: 600; }
+    .status-pending { color: var(--orange); }
+    .status-done { color: var(--green); }
+  </style>
+</head>
+<body>
+
+<div class="page-header">
+  <div style="font-size:2.5rem; margin-bottom:12px;">🔥</div>
+  <h1>Firebase セットアップガイド</h1>
+  <p>全国のユーザーデータをリアルタイム収集するためのFirebase設定（所要時間：約10分）</p>
+</div>
+
+<div class="container">
+
+  <div class="alert alert-warn">
+    <div class="alert-icon">⚠️</div>
+    <div class="alert-text">
+      <strong>友人のデータが見えない理由</strong>
+      現在はLocalStorage（ブラウザ内）にデータを保存しているため、<strong>あなたのPC以外で行われた解析はダッシュボードに届きません。</strong>
+      Firebaseを設定すると、全国どこからでもデータが自動でダッシュボードに集まります。
+    </div>
+  </div>
+
+  <div class="alert alert-info">
+    <div class="alert-icon">✅</div>
+    <div class="alert-text">
+      <strong>Firebase無料枠で十分</strong>
+      Firebase Firestoreの無料枠（Sparkプラン）は、読み取り50,000回/日・書き込み20,000回/日で永久無料です。
+      友人数十人が毎日使っても余裕で収まります。
+    </div>
+  </div>
+
+  <!-- STEP 1 -->
+  <div class="step-card" id="step1">
+    <div class="step-header" onclick="toggleStep('step1')">
+      <div class="step-num" id="step1-num">1</div>
+      <div class="step-title">Googleアカウントでfibase.google.comにアクセス</div>
+      <div class="step-time">⏱ 1分</div>
+    </div>
+    <div class="step-body" id="step1-body">
+      <p class="step-text">
+        Googleアカウントにログインした状態で、下のボタンをクリックしてFirebaseコンソールを開きます。
+      </p>
+      <a href="https://console.firebase.google.com/" target="_blank" class="btn btn-primary" style="text-decoration:none; display:inline-flex;">
+        🔥 Firebaseコンソールを開く（新しいタブ）
+      </a>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="step-card" id="step2">
+    <div class="step-header" onclick="toggleStep('step2')">
+      <div class="step-num" id="step2-num">2</div>
+      <div class="step-title">新しいプロジェクトを作成</div>
+      <div class="step-time">⏱ 3分</div>
+    </div>
+    <div class="step-body" id="step2-body">
+      <p class="step-text">
+        Firebaseコンソールで<span class="click-target">＋ プロジェクトを追加</span>をクリックします。
+      </p>
+      <div class="img-placeholder">📸 [スクリーンショット：「プロジェクトを追加」ボタン]</div>
+      <p class="step-text">
+        <strong>プロジェクト名に <code style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;">pachislot-ai-data</code> と入力して次へ</strong><br>
+        Googleアナリティクスの設定画面はスキップしてOK（無効のまま「プロジェクトを作成」）
+      </p>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="step-card" id="step3">
+    <div class="step-header" onclick="toggleStep('step3')">
+      <div class="step-num" id="step3-num">3</div>
+      <div class="step-title">Firestoreデータベースを有効化</div>
+      <div class="step-time">⏱ 2分</div>
+    </div>
+    <div class="step-body" id="step3-body">
+      <p class="step-text">
+        左サイドバーから<span class="click-target">🔥 Firestore Database</span>をクリック →
+        <span class="click-target">データベースを作成</span>ボタンをクリック。
+      </p>
+      <p class="step-text">
+        モードの選択：<strong>「テストモードで開始」を選択</strong>（30日間は制限なし、後で変更可）<br>
+        ロケーション：<strong>asia-northeast1（東京）</strong> を選択 → 「有効にする」
+      </p>
+      <div class="img-placeholder">📸 [スクリーンショット：Firestoreのモード選択画面]</div>
+    </div>
+  </div>
+
+  <!-- STEP 4 -->
+  <div class="step-card" id="step4">
+    <div class="step-header" onclick="toggleStep('step4')">
+      <div class="step-num" id="step4-num">4</div>
+      <div class="step-title">セキュリティルールを設定（書き込み許可）</div>
+      <div class="step-time">⏱ 2分</div>
+    </div>
+    <div class="step-body" id="step4-body">
+      <p class="step-text">
+        Firestoreの<span class="click-target">ルール</span>タブをクリック。<br>
+        以下のルールをコピーして貼り付け、<span class="click-target">公開</span>ボタンをクリックします。
+      </p>
+      <div class="code-block">
+<span class="comment">// Firestoreルール - 誰でも書き込み可能（管理者のみ読み取り）</span>
+rules_version = <span class="str">'2'</span>;
+<span class="kw">service</span> cloud.firestore {
+  <span class="kw">match</span> /databases/{database}/documents {
+    <span class="kw">match</span> /hall_data/{document} {
+      allow create: <span class="kw">if</span> <span class="str">true</span>;  <span class="comment">// 全員書き込みOK</span>
+      allow read, update, delete: <span class="kw">if</span> <span class="str">false</span>; <span class="comment">// 読み取りは禁止（管理者のみFirebase Adminで読む）</span>
+    }
+  }
+}</div>
+      <p class="step-text" style="color:var(--orange);">
+        ⚠️ 上記ルールはユーザーは「書き込みだけ」できます。読み取りは管理者（あなた）がAPIキーで行うため、他のユーザーは他人のデータを見られません。
+      </p>
+    </div>
+  </div>
+
+  <!-- STEP 5 -->
+  <div class="step-card" id="step5">
+    <div class="step-header" onclick="toggleStep('step5')">
+      <div class="step-num" id="step5-num">5</div>
+      <div class="step-title">ウェブアプリを登録してAPIキーを取得</div>
+      <div class="step-time">⏱ 2分</div>
+    </div>
+    <div class="step-body" id="step5-body">
+      <p class="step-text">
+        プロジェクトの設定（歯車アイコン → <span class="click-target">プロジェクトの設定</span>）を開き、<br>
+        「マイアプリ」セクションから<span class="click-target">&lt;/&gt;</span>（ウェブ）アイコンをクリック。<br>
+        アプリのニックネームに「pachislot-web」と入力して<span class="click-target">アプリを登録</span>。
+      </p>
+      <p class="step-text">
+        次の画面に <code style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;">firebaseConfig</code> が表示されます。<br>
+        <strong>この値を下のフォームに貼り付けてください：</strong>
+      </p>
+
+      <div class="code-block" style="color:#8b949e; user-select:all;">
+const firebaseConfig = {
+  apiKey: "<strong style="color:#79c0ff;">AIzaSy...</strong>",
+  authDomain: "pachislot-ai-data.firebaseapp.com",
+  projectId: "<strong style="color:#79c0ff;">pachislot-ai-data</strong>",
+  storageBucket: "pachislot-ai-data.appspot.com",
+  messagingSenderId: "...",
+  appId: "..."
+};
+      </div>
+
+      <label class="label">🔑 Firebase API Key（apiKey の値）</label>
+      <input type="text" class="input-field" id="input-api-key" placeholder="AIzaSy...">
+
+      <label class="label">📁 Firebase Project ID（projectId の値）</label>
+      <input type="text" class="input-field" id="input-project-id" placeholder="pachislot-ai-data">
+
+      <button class="btn btn-success btn-full" onclick="saveConfig()">
+        ✅ この設定をPACHISLOT AIに適用する
+      </button>
+
+      <div class="success-banner" id="success-banner">
+        <h3>🎉 設定が完了しました！</h3>
+        <p>
+          PACHISLOT AIが自動的にFirebaseに接続されました。<br>
+          これからアプリで解析を行うと、全台のデータがFirebaseに自動送信されます。<br><br>
+          <strong>友人に改めてアプリを使ってもらうと、30秒以内にダッシュボードに表示されます。</strong>
+        </p>
+        <div style="margin-top:16px; display:flex; gap:12px; flex-wrap:wrap;">
+          <a href="admin.html" class="btn btn-success" style="text-decoration:none;">📊 ダッシュボードを開く</a>
+          <a href="index.html" class="btn btn-outline" style="text-decoration:none;">🎰 アプリに戻る</a>
+        </div>
+      </div>
+
+      <div class="config-display" id="config-display"></div>
+    </div>
+  </div>
+
+  <!-- STEP 6: Done -->
+  <div class="step-card" id="step6">
+    <div class="step-header" onclick="toggleStep('step6')">
+      <div class="step-num" id="step6-num">6</div>
+      <div class="step-title">アプリを友人と共有する</div>
+      <div class="step-time">⏱ 1分</div>
+    </div>
+    <div class="step-body" id="step6-body">
+      <p class="step-text">
+        Firebaseを設定したら、あとはアプリ（index.html）を友人にシェアするだけです。<br>
+        <strong>友人がどこにいても、解析するたびに自動で全データがダッシュボードに届きます。</strong>
+      </p>
+      <div style="background: rgba(124,58,237,0.1); border: 1px solid rgba(124,58,237,0.3); border-radius:12px; padding:20px; margin-top:12px;">
+        <div style="font-weight:700; margin-bottom:12px; color:#a78bfa;">📱 アプリの配布方法（おすすめ）</div>
+        <div style="font-size:0.85rem; color:var(--sub); line-height:1.8;">
+          <div>1️⃣ <strong>GitHub Pages</strong> - 無料でWebサイトとして公開（URLで共有可能）</div>
+          <div>2️⃣ <strong>Netlify</strong> - ドラッグ&ドロップで公開（pachislot-ai.netlify.app など）</div>
+          <div>3️⃣ <strong>Googleドライブ共有</strong> - フォルダごと共有してローカルで使用</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="nav-footer">
+  <div class="nav-footer-progress" id="setup-progress">ステップ 0 / 5 完了</div>
+  <div class="nav-footer-status status-pending" id="setup-status">⚙️ 設定中...</div>
+</div>
+
+<script>
+  // Auto-open first step
+  toggleStep('step1');
+
+  function toggleStep(id) {
+    const body = document.getElementById(id + '-body');
+    if (body) body.classList.toggle('open');
+  }
+
+  function saveConfig() {
+    const apiKey    = document.getElementById('input-api-key').value.trim();
+    const projectId = document.getElementById('input-project-id').value.trim();
+
+    if (!apiKey || !apiKey.startsWith('AIza')) {
+      alert('Firebase API Keyを正しく入力してください（AIzaSy...で始まります）');
+      return;
+    }
+    if (!projectId) {
+      alert('Project IDを入力してください');
+      return;
+    }
+
+    const config = { apiKey, projectId, collection: 'hall_data' };
+    localStorage.setItem('pachislot_firebase_config', JSON.stringify(config));
+
+    // Show success
+    document.getElementById('success-banner').classList.add('show');
+    document.getElementById('config-display').classList.add('show');
+    document.getElementById('config-display').textContent =
+      `✅ 保存済み設定:\nAPI Key: ${apiKey.slice(0, 12)}...\nProject ID: ${projectId}\nCollection: hall_data`;
+
+    document.getElementById('setup-status').textContent = '✅ 設定完了！';
+    document.getElementById('setup-status').className = 'nav-footer-status status-done';
+    document.getElementById('setup-progress').textContent = 'Firebase接続完了 🎉';
+
+    // Mark step 5 num as done
+    document.getElementById('step5-num').classList.add('done');
+    document.getElementById('step5-num').textContent = '✓';
+  }
+
+  // Check if already configured
+  window.addEventListener('DOMContentLoaded', () => {
+    const cfg = localStorage.getItem('pachislot_firebase_config');
+    if (cfg) {
+      try {
+        const c = JSON.parse(cfg);
+        if (c.apiKey && c.projectId) {
+          document.getElementById('input-api-key').value = c.apiKey;
+          document.getElementById('input-project-id').value = c.projectId;
+          document.getElementById('setup-status').textContent = '✅ 設定済み';
+          document.getElementById('setup-status').className = 'nav-footer-status status-done';
+          document.getElementById('setup-progress').textContent = 'Firebase接続済み 🎉';
+        }
+      } catch(_) {}
+    }
+  });
+</script>
+</body>
+</html>
