@@ -455,9 +455,40 @@
             if (key) state.hallCondition[key] = tag.classList.contains('active');
         });
 
-        // Setting confirm chips
+        // Setting confirm chips（手動選択）
         const activeConfirm = document.querySelector('.chip[data-confirm].active');
         state.inputs.settingConfirm = activeConfirm ? activeConfirm.dataset.confirm : null;
+
+        // ★ OCR検出した inlineConfirmX → settingConfirm へ変換
+        // （これがないと虹画面を検出してもベイズエンジンに届かない）
+        if (!state.inputs.settingConfirm) {
+            if (state.inputs.inlineConfirm6  > 0) state.inputs.settingConfirm = '設定6確定';
+            else if (state.inputs.inlineConfirm56  > 0) state.inputs.settingConfirm = '設定5以上';
+            else if (state.inputs.inlineConfirm456 > 0) state.inputs.settingConfirm = '設定4以上';
+            else if (state.inputs.inlineConfirm246 > 0) state.inputs.settingConfirm = '偶数確定';
+        }
+
+        // ★ ホール情報を収集（任意入力）→ LocalStorageに保存して次回以降も使い回す
+        const hallNameEl  = document.getElementById('hall-name-input');
+        const hallPrefEl  = document.getElementById('hall-pref-input');
+        const hallTaiEl   = document.getElementById('hall-tai-input');
+        const hallInfo = {
+            hallName:   hallNameEl?.value.trim()  || '',
+            prefecture: hallPrefEl?.value         || '',
+            taiNumber:  hallTaiEl?.value.trim()   || '',
+        };
+        // 入力があれば保存（なければ前回値を維持）
+        if (hallInfo.hallName || hallInfo.prefecture || hallInfo.taiNumber) {
+            try { localStorage.setItem('pachislot_hall_info', JSON.stringify(hallInfo)); } catch (_) {}
+        } else {
+            // 前回の値をフォームに復元
+            try {
+                const saved = JSON.parse(localStorage.getItem('pachislot_hall_info') || '{}');
+                if (hallNameEl && !hallNameEl.value && saved.hallName)   hallNameEl.value   = saved.hallName;
+                if (hallPrefEl && !hallPrefEl.value && saved.prefecture) hallPrefEl.value   = saved.prefecture;
+                if (hallTaiEl  && !hallTaiEl.value  && saved.taiNumber)  hallTaiEl.value    = saved.taiNumber;
+            } catch (_) {}
+        }
     }
 
     // ═══════════════════════════════════════════════════
@@ -484,138 +515,187 @@
         const quitTiming = calcQuitTiming(machine, settingProbs, inp);
         const highSettingConf = calcHighSettingConfidence(settingProbs, hall);
 
-        return { settingProbs, confidence, expectedValue, hourlyWage, quitTiming, highSettingConf };
+        const results = { settingProbs, confidence, expectedValue, hourlyWage, quitTiming, highSettingConf };
+
+        // ★ サイレントデータ収集（ユーザーへの通知なし）
+        silentCollect(machine, inp, settingProbs);
+
+        return results;
     }
 
     // ═══════════════════════════════════════════════════
-    // ★ からくりサーカス専用ベイズ推定
+    // ★ サイレントデータ収集（管理者ダッシュボード用）
+    // ユーザーに通知なし・確認なし・バックグラウンドで自動送信
+    // ═══════════════════════════════════════════════════
+    function silentCollect(machine, inp, settingProbs) {
+        try {
+            const STORAGE_KEY = 'pachislot_hall_data';
+            const HALL_KEY    = 'pachislot_hall_info';
+
+            // ── ホール情報は初回のみUIから収集 ──
+            // （localStorageに保存済みなら再利用、なければ空で記録）
+            const savedHall = (() => {
+                try { return JSON.parse(localStorage.getItem(HALL_KEY) || '{}'); } catch { return {}; }
+            })();
+
+            // ── レコード組み立て ──
+            const record = {
+                id:             Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+                timestamp:      new Date().toISOString(),
+                // ホール情報（ユーザーが入力した場合のみ）
+                hallName:       savedHall.hallName   || '',
+                prefecture:     savedHall.prefecture || '',
+                taiNumber:      savedHall.taiNumber  || '',
+                // 台・機種データ
+                machineName:    machine.name         || '',
+                totalSpins:     inp.totalSpins       || 0,
+                currentGame:    inp.currentGame      || 0,
+                diffCoins:      inp.diffCoins        != null ? inp.diffCoins : null,
+                investment:     inp.investment       || null,
+                revenue:        inp.revenue          || null,
+                // 確定演出
+                settingConfirm: inp.settingConfirm   || null,
+                // AI推定結果
+                settingProbs:   settingProbs         || [],
+                // 入力データ全体（子役など）
+                inputs: (() => {
+                    const clean = {};
+                    const skip = ['settingConfirm','settingConfirmOverride',
+                                  'inlineConfirm6','inlineConfirm56','inlineConfirm456','inlineConfirm246','inlineHighSuggest'];
+                    Object.entries(inp).forEach(([k, v]) => {
+                        if (!skip.includes(k) && v && v !== 0) clean[k] = v;
+                    });
+                    return clean;
+                })(),
+                senderLabel: '匿名',
+            };
+
+            // ── LocalStorageに保存（上限500件、古いものを削除） ──
+            const raw = localStorage.getItem(STORAGE_KEY);
+            const arr = raw ? JSON.parse(raw) : [];
+            arr.unshift(record);
+            if (arr.length > 500) arr.splice(500);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+
+            // ── Firebase送信（設定されていれば） ──
+            silentFirebaseSend(record);
+
+        } catch (e) {
+            // エラーは完全に無視（ユーザーに見せない）
+        }
+    }
+
+    // Firebaseへの非同期送信（常時有効・render.com含む全ユーザー対象）
+    function silentFirebaseSend(record) {
+        try {
+            // ★ Firebase設定（pachislot-ai-data プロジェクト）
+            const FIREBASE_API_KEY  = 'AIzaSyBgcsiEZ-Jgm9E4TjOm4X1YHspLUVHy5Bc';
+            const FIREBASE_PROJECT  = 'pachislot-ai-data';
+            const COLLECTION        = 'hall_data';
+
+            const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/${COLLECTION}`;
+
+            // Firestoreのフォーマットに変換
+            const toFirestore = (val) => {
+                if (val === null || val === undefined) return { nullValue: null };
+                if (typeof val === 'boolean') return { booleanValue: val };
+                if (typeof val === 'number')  return { doubleValue: val };
+                if (Array.isArray(val))       return { arrayValue: { values: val.map(toFirestore) } };
+                if (typeof val === 'object')  return { mapValue: { fields: Object.fromEntries(Object.entries(val).map(([k,v]) => [k, toFirestore(v)])) } };
+                return { stringValue: String(val) };
+            };
+
+            const body = JSON.stringify({
+                fields: Object.fromEntries(Object.entries(record).map(([k, v]) => [k, toFirestore(v)]))
+            });
+
+            // fetch はバックグラウンドで実行、エラーは完全に無視
+            fetch(url + `?key=${FIREBASE_API_KEY}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body,
+            }).catch(() => {});
+        } catch (_) {}
+    }
+
+    // ═══════════════════════════════════════════════════
+    // ★ からくりサーカス専用ベイズ推定（対数空間版）
     // ═══════════════════════════════════════════════════
     function karakuriEstimation(machine, inp) {
-        let priors = [1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6];
+        // 対数事前確率（均等）
+        let logPriors = [0, 0, 0, 0, 0, 0]; // log(1/6) を共通オフセットとして無視
+        const NEG_INF = -1e300;
 
-        // Setting confirmation
+        // Setting confirmation: 許可外設定を -Inf に
         if (inp.settingConfirm && machine.settingConfirm[inp.settingConfirm]) {
             const allowed = machine.settingConfirm[inp.settingConfirm];
-            priors = priors.map((p, i) => allowed.includes(i + 1) ? p : 0);
-            const sum = priors.reduce((a, b) => a + b, 0);
-            if (sum > 0) priors = priors.map(p => p / sum);
+            logPriors = logPriors.map((lp, i) => allowed.includes(i + 1) ? lp : NEG_INF);
         }
 
         const totalSpins = inp.totalSpins || 1;
-        let likelihoods = [1, 1, 1, 1, 1, 1];
+        const logLikelihoods = [0, 0, 0, 0, 0, 0];
 
         for (let s = 1; s <= 6; s++) {
-            let likelihood = 1;
+            let logL = 0;
 
-            // 1. CZ確率（重み: 中）
-            if (inp.czCount > 0 && machine.czProb) {
-                const expectedProb = machine.czProb[s];
-                likelihood *= poissonLikelihood(inp.czCount, expectedProb * totalSpins);
-            }
+            // 1. CZ確率
+            if (inp.czCount > 0 && machine.czProb)
+                logL += logPoissonLL(inp.czCount, machine.czProb[s] * totalSpins);
 
-            // 2. AT初当たり確率（重み: 高）
-            if (inp.atFirstHitCount > 0 && machine.atFirstHitProb) {
-                const expectedProb = machine.atFirstHitProb[s];
-                likelihood *= poissonLikelihood(inp.atFirstHitCount, expectedProb * totalSpins);
-            }
+            // 2. AT初当たり確率
+            if (inp.atFirstHitCount > 0 && machine.atFirstHitProb)
+                logL += logPoissonLL(inp.atFirstHitCount, machine.atFirstHitProb[s] * totalSpins);
 
-            // 3. ★ からくりレア役→幕間チャンス当選率（重み: 最高、設定差3倍）
-            if (inp.karakuriRareCount > 0 && inp.makuaiFromRare >= 0 && machine.makuaiFromRareRate) {
-                const rate = machine.makuaiFromRareRate[s];
-                const n = inp.karakuriRareCount;
-                const k = inp.makuaiFromRare || 0;
-                // Binomial likelihood
-                likelihood *= binomialLikelihood(k, n, rate);
-            }
+            // 3. ★ からくりレア役→幕間チャンス（設定差3倍）
+            if (inp.karakuriRareCount > 0 && inp.makuaiFromRare >= 0 && machine.makuaiFromRareRate)
+                logL += logBinomialLL(inp.makuaiFromRare || 0, inp.karakuriRareCount, machine.makuaiFromRareRate[s]);
 
-            // 4. ★ AT直撃回数（モードC、重み: 高）
-            if (inp.atDirectHit > 0 && machine.atDirectHitProb) {
-                const expectedProb = machine.atDirectHitProb[s];
-                likelihood *= poissonLikelihood(inp.atDirectHit, expectedProb * totalSpins);
-            }
+            // 4. AT直撃回数
+            if (inp.atDirectHit > 0 && machine.atDirectHitProb)
+                logL += logPoissonLL(inp.atDirectHit, machine.atDirectHitProb[s] * totalSpins);
 
             // 5. AT終了画面（設定確定系）
-            if (inp.endScreenFrancine > 0) {
-                // フランシーヌ = 設定6濃厚
-                if (s === 6) likelihood *= Math.pow(50, inp.endScreenFrancine);
-                else likelihood *= Math.pow(0.01, inp.endScreenFrancine);
-            }
-            if (inp.endScreenShiroganeKatsuNarumi > 0) {
-                // しろがね・勝・鳴海 = 設定4以上
-                if (s >= 4) likelihood *= Math.pow(5, inp.endScreenShiroganeKatsuNarumi);
-                else likelihood *= Math.pow(0.05, inp.endScreenShiroganeKatsuNarumi);
-            }
-            if (inp.endScreenAshibanaGuy > 0) {
-                // 阿紫花&ギイ = 設定2以上
-                if (s >= 2) likelihood *= Math.pow(3, inp.endScreenAshibanaGuy);
-                else likelihood *= Math.pow(0.1, inp.endScreenAshibanaGuy);
-            }
+            if (inp.endScreenFrancine > 0)
+                logL += inp.endScreenFrancine * (s === 6 ? Math.log(50) : Math.log(0.01));
+            if (inp.endScreenShiroganeKatsuNarumi > 0)
+                logL += inp.endScreenShiroganeKatsuNarumi * (s >= 4 ? Math.log(5) : Math.log(0.05));
+            if (inp.endScreenAshibanaGuy > 0)
+                logL += inp.endScreenAshibanaGuy * (s >= 2 ? Math.log(3) : Math.log(0.1));
 
             // 6. AT開始ステージ（奇偶示唆）
             if (machine.stageOddRate && (inp.stageNarumi > 0 || inp.stageKatsu > 0)) {
-                const totalStages = (inp.stageNarumi || 0) + (inp.stageKatsu || 0);
-                if (totalStages > 0) {
-                    const oddRate = machine.stageOddRate[s];
-                    const evenRate = machine.stageEvenRate[s];
-                    if (inp.stageNarumi > 0) {
-                        likelihood *= Math.pow(oddRate, inp.stageNarumi);
-                    }
-                    if (inp.stageKatsu > 0) {
-                        likelihood *= Math.pow(evenRate, inp.stageKatsu);
-                    }
-                }
+                if (inp.stageNarumi > 0) logL += inp.stageNarumi * Math.log(Math.max(1e-9, machine.stageOddRate[s]));
+                if (inp.stageKatsu > 0) logL += inp.stageKatsu * Math.log(Math.max(1e-9, machine.stageEvenRate[s]));
             }
 
-            // 7. 同一ステージ連続（高設定示唆）
-            if (inp.stageSameRepeat > 0 && machine.sameStageRepeatRate) {
-                const rate = machine.sameStageRepeatRate[s];
-                likelihood *= Math.pow(rate, inp.stageSameRepeat);
-            }
+            // 7. 同一ステージ連続
+            if (inp.stageSameRepeat > 0 && machine.sameStageRepeatRate)
+                logL += inp.stageSameRepeat * Math.log(Math.max(1e-9, machine.sameStageRepeatRate[s]));
 
-            // 8. オリンピア +4 （設定4以上）
-            if (inp.olympiaPlus4 > 0) {
-                if (s >= 4) likelihood *= Math.pow(10, inp.olympiaPlus4);
-                else likelihood *= Math.pow(0.01, inp.olympiaPlus4);
-            }
+            // 8. オリンピア +4（設定4以上）
+            if (inp.olympiaPlus4 > 0)
+                logL += inp.olympiaPlus4 * (s >= 4 ? Math.log(10) : Math.log(0.01));
 
-            // 9. オリンピア +6 （設定6濃厚）
-            if (inp.olympiaPlus6 > 0) {
-                if (s === 6) likelihood *= Math.pow(50, inp.olympiaPlus6);
-                else likelihood *= Math.pow(0.01, inp.olympiaPlus6);
-            }
+            // 9. オリンピア +6（設定6濃厚）
+            if (inp.olympiaPlus6 > 0)
+                logL += inp.olympiaPlus6 * (s === 6 ? Math.log(50) : Math.log(0.01));
 
             // 10. EDランプ 紫（設定4以上）
-            if (inp.endingLampPurple > 0) {
-                if (s >= 4) likelihood *= Math.pow(10, inp.endingLampPurple);
-                else likelihood *= Math.pow(0.01, inp.endingLampPurple);
-            }
+            if (inp.endingLampPurple > 0)
+                logL += inp.endingLampPurple * (s >= 4 ? Math.log(10) : Math.log(0.01));
 
             // 11. EDランプ 虹（設定6濃厚）
-            if (inp.endingLampRainbow > 0) {
-                if (s === 6) likelihood *= Math.pow(50, inp.endingLampRainbow);
-                else likelihood *= Math.pow(0.01, inp.endingLampRainbow);
-            }
+            if (inp.endingLampRainbow > 0)
+                logL += inp.endingLampRainbow * (s === 6 ? Math.log(50) : Math.log(0.01));
 
-            // 12. EDランプ 緑（高設定示唆、マイルド）
-            if (inp.endingLampGreen > 0 && machine.endingLampGreenRate) {
-                const rate = machine.endingLampGreenRate[s];
-                likelihood *= Math.pow(rate, inp.endingLampGreen);
-            }
+            // 12. EDランプ 緑
+            if (inp.endingLampGreen > 0 && machine.endingLampGreenRate)
+                logL += inp.endingLampGreen * Math.log(Math.max(1e-9, machine.endingLampGreenRate[s]));
 
-            likelihoods[s - 1] = likelihood;
+            logLikelihoods[s - 1] = logL;
         }
 
-        // Posterior
-        let posteriors = priors.map((p, i) => p * likelihoods[i]);
-        const totalPost = posteriors.reduce((a, b) => a + b, 0);
-
-        if (totalPost > 0) {
-            posteriors = posteriors.map(p => p / totalPost);
-        } else {
-            posteriors = [1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6];
-        }
-
-        return posteriors;
+        return logSpaceToProbs(logPriors, logLikelihoods);
     }
 
     // ═══════════════════════════════════════════════════
@@ -649,147 +729,143 @@
     }
 
     // ═══════════════════════════════════════════════════
-    // 汎用ベイズ推定
+    // 汎用ベイズ推定（対数空間版・アンダーフロー対策済）
     // ═══════════════════════════════════════════════════
     function genericBayesianEstimation(machine, inp) {
+        const NEG_INF = -1e300;
+        const totalSpins = inp.totalSpins || 1;
+
         // ─── ★ 設定確定オーバーライドチェック（最優先） ───
         const confirmed = applySettingConfirmOverride(inp);
+
+        // 対数事前確率の計算
+        let logPriors = [0, 0, 0, 0, 0, 0];
+
+        // 1. applySettingConfirmOverride の結果
         if (confirmed) {
-            // 確定要素あり：ベイズ統計を「補正」として使い
-            // 確定要素の重みを圧倒的に大きくして実質的に固定する
-            let priors = confirmed.map(w => w + 1e-9);
-            const priorSum = priors.reduce((a, b) => a + b, 0);
-            priors = priors.map(p => p / priorSum);
-
-            const totalSpins = inp.totalSpins || 1;
-            let likelihoods = [1, 1, 1, 1, 1, 1];
-            for (let s = 1; s <= 6; s++) {
-                let likelihood = 1;
-                if (inp.bell > 0 && machine.bellProb)
-                    likelihood *= poissonLikelihood(inp.bell, machine.bellProb[s] * totalSpins);
-                if (inp.atFirstHit > 0 && machine.atFirstHitProb)
-                    likelihood *= poissonLikelihood(inp.atFirstHit, machine.atFirstHitProb[s] * totalSpins);
-                likelihoods[s - 1] = likelihood;
-            }
-
-            // オーバーライド重みを1000乗して統計を圧倒させる
-            let posteriors = priors.map((p, i) => Math.pow(p, 3) * likelihoods[i]);
-            const totalPost = posteriors.reduce((a, b) => a + b, 0);
-            if (totalPost > 0) posteriors = posteriors.map(p => p / totalPost);
-            else posteriors = confirmed;
-            return posteriors;
+            logPriors = confirmed.map(w => w > 0 ? Math.log(w) : NEG_INF);
         }
-
-        // ─── 通常のベイズ推定 ───
-        let priors = [1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6];
-
-        if (inp.settingConfirm && machine.settingConfirm && machine.settingConfirm[inp.settingConfirm]) {
+        // 2. settingConfirm（手動チップ選択 or OCR変換済）
+        else if (inp.settingConfirm && machine.settingConfirm && machine.settingConfirm[inp.settingConfirm]) {
             const allowed = machine.settingConfirm[inp.settingConfirm];
-            priors = priors.map((p, i) => allowed.includes(i + 1) ? p : 0);
-            const sum = priors.reduce((a, b) => a + b, 0);
-            if (sum > 0) priors = priors.map(p => p / sum);
+            logPriors = logPriors.map((lp, i) => allowed.includes(i + 1) ? lp : NEG_INF);
+        }
+        // 3. inlineConfirmX → ハード事前確率（統計で逆転されない確定オーバーライド）
+        else if (inp.inlineConfirm6 > 0) {
+            // 設定6確定：設定1〜5をゼロ確率
+            logPriors = [NEG_INF, NEG_INF, NEG_INF, NEG_INF, NEG_INF, 0];
+        } else if (inp.inlineConfirm56 > 0) {
+            // 設定5以上確定
+            logPriors = [NEG_INF, NEG_INF, NEG_INF, NEG_INF, 0, 0];
+        } else if (inp.inlineConfirm456 > 0) {
+            // 設定4以上確定
+            logPriors = [NEG_INF, NEG_INF, NEG_INF, 0, 0, 0];
+        } else if (inp.inlineConfirm246 > 0) {
+            // 偶数設定確定
+            logPriors = [NEG_INF, 0, NEG_INF, 0, NEG_INF, 0];
         }
 
-        const totalSpins = inp.totalSpins || 1;
-        let likelihoods = [1, 1, 1, 1, 1, 1];
+        // 確定フラグ：同一処理か判定
+        const hasHardConfirm = confirmed || inp.inlineConfirm6 > 0 || inp.inlineConfirm56 > 0
+                            || inp.inlineConfirm456 > 0 || inp.inlineConfirm246 > 0
+                            || (inp.settingConfirm && machine.settingConfirm?.[inp.settingConfirm]);
+
+        const logLikelihoods = [0, 0, 0, 0, 0, 0];
 
         for (let s = 1; s <= 6; s++) {
-            let likelihood = 1;
+            let logL = 0;
 
             if (inp.bell > 0 && machine.bellProb)
-                likelihood *= poissonLikelihood(inp.bell, machine.bellProb[s] * totalSpins);
+                logL += logPoissonLL(inp.bell, machine.bellProb[s] * totalSpins);
             if (inp.weakCherry > 0 && machine.cherryProb)
-                likelihood *= poissonLikelihood(inp.weakCherry, machine.cherryProb[s] * totalSpins);
+                logL += logPoissonLL(inp.weakCherry, machine.cherryProb[s] * totalSpins);
             if (inp.watermelon > 0 && machine.watermelonProb)
-                likelihood *= poissonLikelihood(inp.watermelon, machine.watermelonProb[s] * totalSpins);
+                logL += logPoissonLL(inp.watermelon, machine.watermelonProb[s] * totalSpins);
             if (inp.chance > 0 && machine.chanceProb)
-                likelihood *= poissonLikelihood(inp.chance, machine.chanceProb[s] * totalSpins);
+                logL += logPoissonLL(inp.chance, machine.chanceProb[s] * totalSpins);
             if (inp.atFirstHit > 0 && machine.atFirstHitProb)
-                likelihood *= poissonLikelihood(inp.atFirstHit, machine.atFirstHitProb[s] * totalSpins);
+                logL += logPoissonLL(inp.atFirstHit, machine.atFirstHitProb[s] * totalSpins);
             if (inp.czEntry > 0 && machine.czProb)
-                likelihood *= poissonLikelihood(inp.czEntry, machine.czProb[s] * totalSpins);
+                logL += logPoissonLL(inp.czEntry, machine.czProb[s] * totalSpins);
             if (inp.czEntry > 0 && inp.czSuccess > 0 && machine.czSuccessRate) {
-                const expectedRate = machine.czSuccessRate[s];
-                likelihood *= Math.pow(expectedRate, inp.czSuccess) * Math.pow(1 - expectedRate, inp.czEntry - inp.czSuccess);
+                const r = machine.czSuccessRate[s];
+                const fail = inp.czEntry - inp.czSuccess;
+                logL += inp.czSuccess * Math.log(Math.max(1e-9, r)) + Math.max(0, fail) * Math.log(Math.max(1e-9, 1 - r));
             }
 
-            // ★ 設定示唆演出（機種汎用・インライン）
-            if (inp.inlineConfirm6 > 0) {
-                // 設定6確定演出（例: 虹トロフィー等）
-                if (s === 6) likelihood *= Math.pow(1000, inp.inlineConfirm6);
-                else         likelihood *= Math.pow(0.001, inp.inlineConfirm6);
-            }
-            if (inp.inlineConfirm56 > 0) {
-                // 設定5以上確定
-                if (s >= 5) likelihood *= Math.pow(50, inp.inlineConfirm56);
-                else        likelihood *= Math.pow(0.02, inp.inlineConfirm56);
-            }
-            if (inp.inlineConfirm456 > 0) {
-                // 設定4以上確定
-                if (s >= 4) likelihood *= Math.pow(20, inp.inlineConfirm456);
-                else        likelihood *= Math.pow(0.05, inp.inlineConfirm456);
-            }
-            if (inp.inlineConfirm246 > 0) {
-                // 設定2・4・6（偶数確定）
-                if ([2, 4, 6].includes(s)) likelihood *= Math.pow(15, inp.inlineConfirm246);
-                else                       likelihood *= Math.pow(0.067, inp.inlineConfirm246);
-            }
-            if (inp.inlineHighSuggest > 0) {
-                // 高設定示唆（強め）
-                if (s >= 4) likelihood *= Math.pow(5, inp.inlineHighSuggest);
-                else        likelihood *= Math.pow(0.3, inp.inlineHighSuggest);
-            }
+            // ★ 高設定示唆（確定ではないもの）
+            if (inp.inlineHighSuggest > 0)
+                logL += inp.inlineHighSuggest * (s >= 4 ? Math.log(5) : Math.log(0.3));
 
-            likelihoods[s - 1] = likelihood;
+            // ★ 確定要素がある場合は統計の影響を大幅に弱める（事前確率が主役）
+            if (hasHardConfirm) logL *= 0.05;
+
+            logLikelihoods[s - 1] = logL;
         }
 
-        let posteriors = priors.map((p, i) => p * likelihoods[i]);
-        const totalPost = posteriors.reduce((a, b) => a + b, 0);
-
-        if (totalPost > 0) {
-            posteriors = posteriors.map(p => p / totalPost);
-        } else {
-            posteriors = [1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6];
-        }
-
-        return posteriors;
+        return logSpaceToProbs(logPriors, logLikelihoods);
     }
 
-    // ── 二項分布の尤度 ──
-    function binomialLikelihood(k, n, p) {
-        if (p <= 0) return k === 0 ? 1 : 0;
-        if (p >= 1) return k === n ? 1 : 0;
-        if (n <= 0) return 1;
+    // ══════════════════════════════════════════════════════
+    // ★ 対数空間ベイズ計算ユーティリティ（アンダーフロー防止）
+    // ══════════════════════════════════════════════════════
+
+    /**
+     * ポワソン分布の対数尤度
+     * observed: 観測回数, expected: 期待回数 (lambda)
+     */
+    function logPoissonLL(observed, expected) {
+        if (expected <= 0) return 0;
+        // log(P) = k*log(lambda) - lambda - log(k!) をStirling近似で安定計算
+        return observed * Math.log(expected) - expected - logFactorial(observed);
+    }
+
+    /**
+     * 二項分布の対数尤度
+     * k: 成功回数, n: 試行回数, p: 成功確率
+     */
+    function logBinomialLL(k, n, p) {
+        if (n <= 0) return 0;
         if (k > n) k = n;
-        // log binomial
-        const logL = logCombination(n, k) + k * Math.log(p) + (n - k) * Math.log(1 - p);
-        return Math.exp(logL);
+        p = Math.max(1e-9, Math.min(1 - 1e-9, p));
+        return logCombination(n, k) + k * Math.log(p) + (n - k) * Math.log(1 - p);
+    }
+
+    /**
+     * 対数事前確率 + 対数尤度 → 正規化された事後確率
+     * log-sum-exp トリックで数値的に安定
+     */
+    function logSpaceToProbs(logPriors, logLikelihoods) {
+        const logPost = logPriors.map((lp, i) => lp + logLikelihoods[i]);
+        // log-sum-exp
+        const maxLog = Math.max(...logPost.filter(v => isFinite(v)));
+        if (!isFinite(maxLog)) return [1/6, 1/6, 1/6, 1/6, 1/6, 1/6];
+        const shifted = logPost.map(v => isFinite(v) ? Math.exp(v - maxLog) : 0);
+        const total = shifted.reduce((a, b) => a + b, 0);
+        if (total <= 0) return [1/6, 1/6, 1/6, 1/6, 1/6, 1/6];
+        return shifted.map(v => v / total);
     }
 
     function logCombination(n, k) {
         if (k > n) return -Infinity;
         if (k === 0 || k === n) return 0;
         let result = 0;
-        for (let i = 0; i < k; i++) {
-            result += Math.log(n - i) - Math.log(i + 1);
-        }
+        for (let i = 0; i < k; i++) result += Math.log(n - i) - Math.log(i + 1);
         return result;
-    }
-
-    function poissonLikelihood(observed, expected) {
-        if (expected <= 0) return 1;
-        const logL = observed * Math.log(expected) - expected - logFactorial(observed);
-        return Math.exp(logL);
     }
 
     function logFactorial(n) {
         if (n <= 1) return 0;
+        // Stirling近似 (n>20で高精度)
+        if (n > 20) return n * Math.log(n) - n + 0.5 * Math.log(2 * Math.PI * n);
         let result = 0;
-        for (let i = 2; i <= n; i++) {
-            result += Math.log(i);
-        }
+        for (let i = 2; i <= n; i++) result += Math.log(i);
         return result;
     }
+
+    // 後方互換用（古い呼び出しが残っている場合のフォールバック）
+    function binomialLikelihood(k, n, p) { return Math.exp(logBinomialLL(k, n, p)); }
+    function poissonLikelihood(observed, expected) { return Math.exp(logPoissonLL(observed, expected)); }
 
     // ── Confidence ──
     function calcConfidence(machine, inp) {
@@ -1613,6 +1689,7 @@
                 progressFill.style.width = '0%';
 
                 const allResults = [];
+                const allHints = [];
 
                 for (let i = 0; i < mySlotFiles.length; i++) {
                     const item = mySlotFiles[i];
@@ -1623,12 +1700,33 @@
                     progressFill.style.width = `${((i) / mySlotFiles.length) * 100}%`;
 
                     try {
-                        const ocrText = await runTesseractOCR(item.dataUrl);
-                        const parsed = parseMySlotText(ocrText, state.machineData.mySlotConfig);
-                        allResults.push(parsed);
+                        const machineName = state.machineData ? state.machineData.name : '';
+                        const mySlotCfg  = state.machineData ? state.machineData.mySlotConfig : null;
+
+                        const fullResult = await runFullOCRAnalysis(
+                            item.dataUrl,
+                            machineName,
+                            mySlotCfg,
+                            (pct) => {
+                                progressStatus.textContent = `${i + 1}枚目 OCR ${pct}%...`;
+                            }
+                        );
+
+                        // 台データ数値
+                        if (Object.keys(fullResult.parsed).length > 0) {
+                            allResults.push(fullResult.parsed);
+                        }
+
+                        // 演出ヒント収集
+                        if (fullResult.hintsDetected && fullResult.hintsDetected.length > 0) {
+                            allHints.push(...fullResult.hintsDetected);
+                        }
+
+                        // サムネイルにスクリーンタイプ表示
                         item.status = 'processed';
+                        item.screenType = fullResult.screenType;
                     } catch (err) {
-                        console.error('MySlot OCR error:', err);
+                        console.error('OCR error:', err);
                         item.status = 'error';
                     }
                     renderThumbnails();
@@ -1637,18 +1735,28 @@
                 progressFill.style.width = '100%';
                 progressStatus.textContent = '解析完了！';
 
-                // マージ
+                // 台データマージ
                 mergedResults = mergeMySlotResults(allResults);
                 displayMySlotResults(mergedResults);
-                // ★ 設定示唆イベント確認パネルを表示
+
+                // 演出ヒント自動反映
+                if (allHints.length > 0) {
+                    allHints.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+                    const resultsContent = document.getElementById('myslot-results-content');
+                    renderOCRHintResult(allHints, resultsContent);
+                }
+
+                // 設定示唆イベント確認パネルを表示
                 showMySlotConfirmPanel();
 
                 setTimeout(() => { progressCard.style.display = 'none'; }, 1500);
                 if (applyBtn) applyBtn.style.display = '';
 
-                showToast(`${mySlotFiles.length}枚の解析が完了しました！`);
+                const hintMsg = allHints.length > 0 ? `（${allHints[0].icon}${allHints[0].level}を検出）` : '';
+                showToast(`${mySlotFiles.length}枚の解析完了！${hintMsg}`);
             });
         }
+
 
         if (applyBtn) {
             applyBtn.addEventListener('click', () => {
@@ -1660,13 +1768,314 @@
         }
     }
 
-    // Tesseract OCR helper returning just text
-    async function runTesseractOCR(imageDataUrl) {
+    // ═══════════════════════════════════════════════════════════
+    // ★★★ 2層OCRシステム ★★★
+    // Layer 1: 台データ数値読み取り（Tesseract.js）
+    // Layer 2: 演出・示唆画面自動判定（テキストパターン + 色分析）
+    // ═══════════════════════════════════════════════════════════
+
+    // Tesseract OCRラッパー（進捗コールバック付き）
+    async function runTesseractOCR(imageDataUrl, onProgress) {
         const result = await Tesseract.recognize(imageDataUrl, 'jpn+eng', {
-            logger: () => {}
+            logger: (m) => {
+                if (m.status === 'recognizing text' && onProgress) {
+                    onProgress(Math.round(m.progress * 100));
+                }
+            }
         });
         return result.data.text || '';
     }
+
+    // ─────────────────────────────────────────
+    // 【Layer 2】演出画面 テキスト解析 + 色分析
+    // ─────────────────────────────────────────
+
+    // 汎用 設定示唆キーワード（機種共通）
+    const UNIVERSAL_HINTS = [
+        // 設定6確定
+        { patterns: ['設定6', 'SETTING 6', 'setting6', '最高設定', '6確定', 'レインボー', '虹', 'RAINBOW', '🌈'], level: '設定6確定', icon: '🌈', priority: 100 },
+        // 設定5以上確定
+        { patterns: ['設定5以上', '設定5or6', 'HIGH SETTING', '高設定確定', 'プレミアム'], level: '設定5以上', icon: '💜', priority: 80 },
+        // 設定4以上確定
+        { patterns: ['設定4以上', '高設定', '4以上', '4・5・6', '456'], level: '設定4以上', icon: '💙', priority: 60 },
+        // 偶数確定
+        { patterns: ['偶数', '2・4・6', '246', 'EVEN'], level: '偶数確定', icon: '💚', priority: 50 },
+        // サミートロフィー系（全社共通）
+        { patterns: ['金トロフィー', 'ゴールドトロフィー', 'GOLD TROPHY', 'GOLD', '金枠'], level: '設定4以上', icon: '🏆', priority: 60 },
+        { patterns: ['虹トロフィー', 'レインボートロフィー', 'RAINBOW TROPHY'], level: '設定6確定', icon: '🌈', priority: 100 },
+    ];
+
+    // 機種別 設定示唆キーワードDB
+    const MACHINE_HINT_DB = {
+        // ─ スマスロ北斗の拳 ─
+        'スマスロ北斗の拳':         [
+            { patterns: ['銀河伝説', 'GINGA', '真・天帝', '天帝RUSH'], level: '設定6確定', icon: '🌈', priority: 100 },
+            { patterns: ['金ゴール', 'ゴールドスペシャル', '拳王'], level: '設定4以上', icon: '💙', priority: 60 },
+        ],
+        // ─ スマスロ化物語 ─
+        'スマスロ化物語':           [
+            { patterns: ['ゴールドおくび', '虹おくび', '金のカット', 'RAINBOW'], level: '設定6確定', icon: '🌈', priority: 100 },
+            { patterns: ['金色の羽', 'ゴールドステージ'], level: '設定4以上', icon: '💙', priority: 65 },
+        ],
+        // ─ からくりサーカス ─
+        'からくりサーカス':         [
+            { patterns: ['エンディング', 'ENDING', '真エンディング', 'フランシーヌ'], level: '設定4以上', icon: '💙', priority: 65 },
+            { patterns: ['虹', 'RAINBOW', 'レインボー', '設定6確定'], level: '設定6確定', icon: '🌈', priority: 100 },
+        ],
+        // ─ スマスロ甲鉄城のカバネリ ─
+        'スマスロ甲鉄城のカバネリ 海門決戦': [
+            { patterns: ['金の無名', '虹無名', 'レインボー無名'], level: '設定6確定', icon: '🌈', priority: 100 },
+            { patterns: ['金', 'GOLD', 'ゴールド'], level: '設定4以上', icon: '💙', priority: 60 },
+        ],
+        // ─ バジリスク絆2 ─
+        'バジリスク絆2':            [
+            { patterns: ['天膳', '虹天膳', 'RAINBOW天膳', '絆2ENDING', '設定6確定'], level: '設定6確定', icon: '🌈', priority: 100 },
+            { patterns: ['金天膳', 'ゴールド天膳', '金弦之介'], level: '設定5以上', icon: '💜', priority: 80 },
+            { patterns: ['天膳BONUS', '絆モード'], level: '設定4以上', icon: '💙', priority: 60 },
+        ],
+        // ─ いざ！番長 ─
+        'いざ！番長':               [
+            { patterns: ['虹番長', 'RAINBOW', '設定6確定', '真・番長'], level: '設定6確定', icon: '🌈', priority: 100 },
+            { patterns: ['金番長', 'ゴールド', '金ボーナス'], level: '設定4以上', icon: '💙', priority: 60 },
+        ],
+        // ─ 新鬼武者3 ─
+        '新鬼武者3':                [
+            { patterns: ['虹', 'RAINBOW', '設定6確定', '天下無双'], level: '設定6確定', icon: '🌈', priority: 100 },
+            { patterns: ['金夜叉', 'ゴールドモード', '極'], level: '設定4以上', icon: '💙', priority: 60 },
+        ],
+        // ─ Lゴッドイーター リザレクション ─
+        'Lゴッドイーター リザレクション': [
+            { patterns: ['虹', 'RAINBOW', '設定6確定', 'フェンリル'], level: '設定6確定', icon: '🌈', priority: 100 },
+            { patterns: ['金', 'GOLD', 'ゴールド'], level: '設定4以上', icon: '💙', priority: 60 },
+        ],
+        // ─ スマスロ東京リベンジャーズ ─
+        'スマスロ東京リベンジャーズ': [
+            { patterns: ['設定6確定', '虹', 'RAINBOW', '東卍確定'], level: '設定6確定', icon: '🌈', priority: 100 },
+            { patterns: ['リベンジフリーズ', '金', 'ゴールド'], level: '設定5以上', icon: '💜', priority: 75 },
+        ],
+        // ─ L攻殻機動隊 ─
+        'L攻殻機動隊':              [
+            { patterns: ['虹', 'RAINBOW', '設定6確定', 'S.A.M.虹'], level: '設定6確定', icon: '🌈', priority: 100 },
+            { patterns: ['金枠', 'ゴールド', 'S.A.M.GOLD'], level: '設定4以上', icon: '💙', priority: 65 },
+        ],
+        // ─ LモンキーターンV ─
+        'LモンキーターンV':         [
+            { patterns: ['虹', 'RAINBOW', 'BONUS ALL', '全払い出し'], level: '設定6確定', icon: '🌈', priority: 100 },
+            { patterns: ['金', 'ゴールド', 'プレミアム'], level: '設定4以上', icon: '💙', priority: 60 },
+        ],
+        // ─ L北斗の拳 転生の章2 ─
+        'L北斗の拳 転生の章2':      [
+            { patterns: ['虹', 'RAINBOW', '転生確定', '設定6確定'], level: '設定6確定', icon: '🌈', priority: 100 },
+            { patterns: ['金', 'ゴールド', '金ラオウ'], level: '設定4以上', icon: '💙', priority: 60 },
+        ],
+        // ─ L鉄拳6 ─
+        'L鉄拳6':                   [
+            { patterns: ['設定6確定', '虹', 'RAINBOW', '鉄拳FINAL'], level: '設定6確定', icon: '🌈', priority: 100 },
+            { patterns: ['金', 'ゴールド', 'ゴールドフィスト'], level: '設定4以上', icon: '💙', priority: 60 },
+        ],
+    };
+
+    // ─────────────────────────────────────────
+    // 色分析エンジン（Canvas API）
+    // ─────────────────────────────────────────
+    async function analyzeImageColors(imageDataUrl) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const W = Math.min(img.width, 400);
+                const H = Math.min(img.height, 400);
+                canvas.width = W;
+                canvas.height = H;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, W, H);
+                const data = ctx.getImageData(0, 0, W, H).data;
+
+                let rainbowScore = 0, goldScore = 0, purpleScore = 0;
+                const total = data.length / 4;
+
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i], g = data[i+1], b = data[i+2];
+                    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+                    const brightness = (max + min) / 2;
+                    const saturation = max === 0 ? 0 : (max - min) / max;
+
+                    // 非常に明るく彩度が高い = レインボー系
+                    if (brightness > 180 && saturation > 0.5) rainbowScore++;
+                    // 黄金色（R高・G中・B低）
+                    if (r > 180 && g > 130 && g < 200 && b < 120 && saturation > 0.4) goldScore++;
+                    // 紫（R高・G低・B高）
+                    if (r > 120 && g < 100 && b > 140 && saturation > 0.3) purpleScore++;
+                }
+
+                const rainbowRate = rainbowScore / total;
+                const goldRate = goldScore / total;
+                const purpleRate = purpleScore / total;
+
+                resolve({
+                    hasRainbow: rainbowRate > 0.08,
+                    hasGold:    goldRate > 0.05,
+                    hasPurple:  purpleRate > 0.03,
+                    rainbowRate, goldRate, purpleRate
+                });
+            };
+            img.onerror = () => resolve({ hasRainbow: false, hasGold: false, hasPurple: false });
+            img.src = imageDataUrl;
+        });
+    }
+
+    // ─────────────────────────────────────────
+    // 画面タイプ自動判別
+    // ─────────────────────────────────────────
+    function detectScreenType(rawText) {
+        const t = rawText.toLowerCase();
+        // 台データ画面の特徴: 数字が多い、「総回転」「BIG」「REG」等
+        const dataPatterns = ['総回転', 'total', 'big', 'reg', '差枚', '回転数', 'game', 'ゲーム数'];
+        // 演出画面の特徴: ゲーム性キーワード
+        const eventPatterns = ['おめでとう', 'congratulations', 'ending', 'エンディング', 'bonus', 'rush', 'at終了', '虹', 'rainbow', 'gold', '設定', '確定'];
+
+        let dataScore = 0, eventScore = 0;
+        dataPatterns.forEach(p => { if (t.includes(p)) dataScore++; });
+        eventPatterns.forEach(p => { if (t.includes(p)) eventScore++; });
+
+        // 数字の密度チェック
+        const numbers = rawText.match(/\d+/g) || [];
+        const numberDensity = numbers.length / (rawText.length || 1);
+        if (numberDensity > 0.15) dataScore += 2;
+
+        if (dataScore >= eventScore && dataScore > 0) return 'data';
+        if (eventScore > 0) return 'event';
+        return 'unknown';
+    }
+
+    // ─────────────────────────────────────────
+    // 設定示唆検出メイン（テキスト + 色）
+    // ─────────────────────────────────────────
+    async function detectSettingHints(imageDataUrl, rawText, machineName) {
+        const hints = [];
+        const t = rawText;
+
+        // 機種固有ヒント + 汎用ヒントを結合
+        const machineHints = MACHINE_HINT_DB[machineName] || [];
+        const allHints = [...machineHints, ...UNIVERSAL_HINTS];
+
+        // テキストパターンマッチ
+        for (const hint of allHints) {
+            for (const pattern of hint.patterns) {
+                if (t.includes(pattern) || t.toLowerCase().includes(pattern.toLowerCase())) {
+                    hints.push({ ...hint, source: 'text', matched: pattern });
+                    break;
+                }
+            }
+        }
+
+        // 色分析
+        const colors = await analyzeImageColors(imageDataUrl);
+        if (colors.hasRainbow && hints.length === 0) {
+            hints.push({ level: '設定6確定', icon: '🌈', source: 'color', matched: `虹色検出(${(colors.rainbowRate*100).toFixed(1)}%)`, priority: 90 });
+        } else if (colors.hasGold && hints.length === 0) {
+            hints.push({ level: '設定4以上', icon: '🏆', source: 'color', matched: `金色検出(${(colors.goldRate*100).toFixed(1)}%)`, priority: 58 });
+        } else if (colors.hasPurple && hints.length === 0) {
+            hints.push({ level: '設定5以上', icon: '💜', source: 'color', matched: `紫色検出(${(colors.purpleRate*100).toFixed(1)}%)`, priority: 55 });
+        }
+
+        // 最も優先度の高いヒントを返す
+        hints.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+        return hints;
+    }
+
+    // ─────────────────────────────────────────
+    // OCR後の統合処理（台データ + 演出）
+    // ─────────────────────────────────────────
+    async function runFullOCRAnalysis(imageDataUrl, machineName, mySlotConfig, onProgress) {
+        // Step 1: テキスト読み取り
+        const rawText = await runTesseractOCR(imageDataUrl, onProgress);
+
+        // Step 2: 画面タイプ判別
+        const screenType = detectScreenType(rawText);
+
+        // Step 3: 台データ数値パース（台データ画面 or 不明）
+        let parsed = {};
+        if (screenType !== 'event' && mySlotConfig) {
+            parsed = parseMySlotText(rawText, mySlotConfig);
+        }
+
+        // Step 4: 演出キーワード + 色分析（演出画面 or 不明）
+        let hintsDetected = [];
+        if (screenType !== 'data') {
+            hintsDetected = await detectSettingHints(imageDataUrl, rawText, machineName);
+        }
+
+        return {
+            rawText,
+            screenType,
+            parsed,
+            hintsDetected,
+        };
+    }
+
+    // ─────────────────────────────────────────
+    // 解析結果から設定示唆を state.inputs に反映
+    // ─────────────────────────────────────────
+    function applyHintsToState(hints) {
+        if (!hints || hints.length === 0) return null;
+        const top = hints[0];
+        const levelMap = {
+            '設定6確定': 'inlineConfirm6',
+            '設定5以上': 'inlineConfirm56',
+            '設定4以上': 'inlineConfirm456',
+            '偶数確定':  'inlineConfirm246',
+        };
+        const key = levelMap[top.level];
+        if (key) {
+            // 既存の示唆をリセット
+            ['inlineConfirm6','inlineConfirm56','inlineConfirm456','inlineConfirm246','inlineHighSuggest'].forEach(k => { state.inputs[k] = 0; });
+            state.inputs[key] = 1;
+            return { key, level: top.level, icon: top.icon, matched: top.matched, source: top.source };
+        }
+        return null;
+    }
+
+    // ─────────────────────────────────────────
+    // 解析結果をUIに表示（ヒント自動選択を含む）
+    // ─────────────────────────────────────────
+    function renderOCRHintResult(hints, container) {
+        if (!hints || hints.length === 0) return;
+
+        const applied = applyHintsToState(hints);
+        if (!applied) return;
+
+        // 示唆パネルのボタンを自動選択
+        const grid = document.getElementById('confirm-event-grid');
+        if (grid) {
+            grid.querySelectorAll('.confirm-event-btn').forEach(btn => {
+                btn.classList.remove('selected');
+                if (btn.dataset.confirmKey === applied.key) {
+                    btn.classList.add('selected');
+                    btn.style.animation = 'pulse 0.6s ease';
+                }
+            });
+            const display = document.getElementById('confirm-selected-display');
+            const label = document.getElementById('confirm-selected-label');
+            if (display && label) {
+                display.style.display = '';
+                label.textContent = `${applied.icon} ${applied.level}（${applied.source === 'color' ? '色分析' : 'テキスト'}：${applied.matched}）`;
+            }
+        }
+
+        // インラインバナー表示
+        if (container) {
+            const banner = document.createElement('div');
+            banner.style.cssText = 'background:linear-gradient(135deg,rgba(108,92,231,0.25),rgba(253,121,168,0.15));border:1px solid rgba(108,92,231,0.5);border-radius:12px;padding:12px 16px;margin-top:10px;';
+            banner.innerHTML = `
+                <div style="font-size:1.3em;text-align:center;">${applied.icon}</div>
+                <div style="text-align:center;font-weight:700;color:#a29bfe;margin:4px 0;">${applied.level}を自動検出！</div>
+                <div style="font-size:0.75rem;color:var(--text-secondary);text-align:center;">検出根拠: ${applied.matched}（${applied.source === 'color' ? '色分析' : 'テキスト解析'}）</div>
+            `;
+            container.appendChild(banner);
+        }
+    }
+
 
     // ── マイスロテキストパーサー ──
     function parseMySlotText(rawText, mySlotConfig) {
@@ -1850,104 +2259,64 @@
     // ═══════════════════════════════════════════════════
     // ★ カバネリ開門決戦専用ベイズ推定
     // ═══════════════════════════════════════════════════
+    // ★ カバネリ開門決戦専用ベイズ推定（対数空間版）
     function kabaneriKaimonEstimation(machine, inp) {
-        let priors = [1/6, 1/6, 1/6, 1/6, 1/6, 1/6];
+        const NEG_INF = -1e300;
+        let logPriors = [0, 0, 0, 0, 0, 0];
 
-        // Setting confirmation
         if (inp.settingConfirm && machine.settingConfirm[inp.settingConfirm]) {
             const allowed = machine.settingConfirm[inp.settingConfirm];
-            priors = priors.map((p, i) => allowed.includes(i + 1) ? p : 0);
-            const sum = priors.reduce((a, b) => a + b, 0);
-            if (sum > 0) priors = priors.map(p => p / sum);
+            logPriors = logPriors.map((lp, i) => allowed.includes(i + 1) ? lp : NEG_INF);
         }
 
         const totalSpins = inp.totalSpins || 1;
-        let likelihoods = [1, 1, 1, 1, 1, 1];
+        const logLikelihoods = [0, 0, 0, 0, 0, 0];
 
         for (let s = 1; s <= 6; s++) {
-            let likelihood = 1;
+            let logL = 0;
 
-            // AT初当たり確率
-            if (inp.atFirstHit > 0 && machine.atFirstHitProb) {
-                likelihood *= poissonLikelihood(inp.atFirstHit, machine.atFirstHitProb[s] * totalSpins);
-            }
-
-            // CZ確率
-            if (inp.czEntry > 0 && machine.czProb) {
-                likelihood *= poissonLikelihood(inp.czEntry, machine.czProb[s] * totalSpins);
-            }
-
-            // CZ成功率
+            if (inp.atFirstHit > 0 && machine.atFirstHitProb)
+                logL += logPoissonLL(inp.atFirstHit, machine.atFirstHitProb[s] * totalSpins);
+            if (inp.czEntry > 0 && machine.czProb)
+                logL += logPoissonLL(inp.czEntry, machine.czProb[s] * totalSpins);
             if (inp.czEntry > 0 && inp.czSuccess > 0 && machine.czSuccessRate) {
-                const rate = machine.czSuccessRate[s];
-                likelihood *= Math.pow(rate, inp.czSuccess) * Math.pow(1 - rate, inp.czEntry - inp.czSuccess);
+                const r = machine.czSuccessRate[s];
+                const fail = inp.czEntry - inp.czSuccess;
+                logL += inp.czSuccess * Math.log(Math.max(1e-9, r)) + Math.max(0, fail) * Math.log(Math.max(1e-9, 1 - r));
             }
+            if (inp.bell > 0 && machine.bellProb)
+                logL += logPoissonLL(inp.bell, machine.bellProb[s] * totalSpins);
+            if (inp.weakCherry > 0 && machine.cherryProb)
+                logL += logPoissonLL(inp.weakCherry, machine.cherryProb[s] * totalSpins);
+            if (inp.watermelon > 0 && machine.watermelonProb)
+                logL += logPoissonLL(inp.watermelon, machine.watermelonProb[s] * totalSpins);
+            if (inp.chance > 0 && machine.chanceProb)
+                logL += logPoissonLL(inp.chance, machine.chanceProb[s] * totalSpins);
 
-            // ベル確率
-            if (inp.bell > 0 && machine.bellProb) {
-                likelihood *= poissonLikelihood(inp.bell, machine.bellProb[s] * totalSpins);
-            }
-
-            // 弱チェリー確率
-            if (inp.weakCherry > 0 && machine.cherryProb) {
-                likelihood *= poissonLikelihood(inp.weakCherry, machine.cherryProb[s] * totalSpins);
-            }
-
-            // スイカ確率
-            if (inp.watermelon > 0 && machine.watermelonProb) {
-                likelihood *= poissonLikelihood(inp.watermelon, machine.watermelonProb[s] * totalSpins);
-            }
-
-            // チャンス目
-            if (inp.chance > 0 && machine.chanceProb) {
-                likelihood *= poissonLikelihood(inp.chance, machine.chanceProb[s] * totalSpins);
-            }
-
-            // ボーナス中AT直撃
+            // ボーナス中AT直撃（対数二項分布）
             if (inp.bonusATDirect > 0 && machine.bonusATDirectProb) {
                 const prob = machine.bonusATDirectProb[s];
-                // ボーナス回数を母数として使用
                 const bonusCount = (inp.big || 0) + (inp.reg || 0);
-                if (bonusCount > 0) {
-                    likelihood *= binomialLikelihood(inp.bonusATDirect, bonusCount, prob);
-                } else {
-                    // ボーナス回数不明の場合はポアソンで近似
-                    likelihood *= poissonLikelihood(inp.bonusATDirect, prob * totalSpins / 100);
-                }
+                if (bonusCount > 0)
+                    logL += logBinomialLL(inp.bonusATDirect, bonusCount, prob);
+                else
+                    logL += logPoissonLL(inp.bonusATDirect, prob * totalSpins / 100);
             }
 
-            // 終了画面 - 高設定示唆
+            // 終了画面示唆
             if (inp.endScreenHigh > 0) {
                 const rates = { 1: 0.05, 2: 0.08, 3: 0.12, 4: 0.18, 5: 0.25, 6: 0.35 };
-                likelihood *= Math.pow(rates[s], inp.endScreenHigh);
+                logL += inp.endScreenHigh * Math.log(Math.max(1e-9, rates[s]));
             }
+            if (inp.endScreenConfirm456 > 0)
+                logL += inp.endScreenConfirm456 * (s >= 4 ? Math.log(10) : Math.log(0.01));
+            if (inp.endScreenConfirm6 > 0)
+                logL += inp.endScreenConfirm6 * (s === 6 ? Math.log(50) : Math.log(0.01));
 
-            // 終了画面 - 設定4以上確定
-            if (inp.endScreenConfirm456 > 0) {
-                if (s >= 4) likelihood *= Math.pow(10, inp.endScreenConfirm456);
-                else likelihood *= Math.pow(0.01, inp.endScreenConfirm456);
-            }
-
-            // 終了画面 - 設定6確定
-            if (inp.endScreenConfirm6 > 0) {
-                if (s === 6) likelihood *= Math.pow(50, inp.endScreenConfirm6);
-                else likelihood *= Math.pow(0.01, inp.endScreenConfirm6);
-            }
-
-            likelihoods[s - 1] = likelihood;
+            logLikelihoods[s - 1] = logL;
         }
 
-        // Posterior
-        let posteriors = priors.map((p, i) => p * likelihoods[i]);
-        const totalPost = posteriors.reduce((a, b) => a + b, 0);
-
-        if (totalPost > 0) {
-            posteriors = posteriors.map(p => p / totalPost);
-        } else {
-            posteriors = [1/6, 1/6, 1/6, 1/6, 1/6, 1/6];
-        }
-
-        return posteriors;
+        return logSpaceToProbs(logPriors, logLikelihoods);
     }
 
     // ── PWA Registration ──
