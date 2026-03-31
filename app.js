@@ -1852,18 +1852,20 @@
 
     // 汎用 設定示唆キーワード（機種共通）
     const UNIVERSAL_HINTS = [
-        // 設定6確定
-        { patterns: ['設定6', 'SETTING 6', 'setting6', '最高設定', '6確定', 'レインボー', '虹', 'RAINBOW', '🌈'], level: '設定6確定', icon: '🌈', priority: 100 },
+        // 設定6確定（★演出テキストが明確に含まれる場合のみ）
+        { patterns: ['設定6確定', 'SETTING6確定', '最高設定確定', '6確定演出', '設定6おめでとう'], level: '設定6確定', icon: '🌈', priority: 100 },
         // 設定5以上確定
-        { patterns: ['設定5以上', '設定5or6', 'HIGH SETTING', '高設定確定', 'プレミアム'], level: '設定5以上', icon: '💜', priority: 80 },
+        { patterns: ['設定5以上', '設定5or6', 'HIGH SETTING', '高設定確定', 'プレミアム演出'], level: '設定5以上', icon: '💜', priority: 80 },
         // 設定4以上確定
-        { patterns: ['設定4以上', '高設定', '4以上', '4・5・6', '456'], level: '設定4以上', icon: '💙', priority: 60 },
+        { patterns: ['設定4以上', '4以上確定', '4・5・6確定', '456確定'], level: '設定4以上', icon: '💙', priority: 60 },
         // 偶数確定
-        { patterns: ['偶数', '2・4・6', '246', 'EVEN'], level: '偶数確定', icon: '💚', priority: 50 },
-        // サミートロフィー系（全社共通）
-        { patterns: ['金トロフィー', 'ゴールドトロフィー', 'GOLD TROPHY', 'GOLD', '金枠'], level: '設定4以上', icon: '🏆', priority: 60 },
-        { patterns: ['虹トロフィー', 'レインボートロフィー', 'RAINBOW TROPHY'], level: '設定6確定', icon: '🌈', priority: 100 },
+        { patterns: ['偶数確定', '2・4・6確定', '246確定', 'EVEN確定'], level: '偶数確定', icon: '💚', priority: 50 },
+        // ★ サミートロフィー系（「トロフィー」との複合語のみ有効・単体「虹」は無効）
+        { patterns: ['虹トロフィー', 'レインボートロフィー', 'RAINBOW TROPHY', 'サミートロフィー虹', 'rainbow trophy'], level: '設定6確定', icon: '🌈', priority: 100 },
+        { patterns: ['金トロフィー', 'ゴールドトロフィー', 'GOLD TROPHY', 'サミートロフィー金'], level: '設定4以上', icon: '🏆', priority: 60 },
+        { patterns: ['銀トロフィー', 'シルバートロフィー', 'SILVER TROPHY', 'サミートロフィー銀'], level: '設定2以上', icon: '🥈', priority: 40 },
     ];
+
 
     // 機種別 設定示唆キーワードDB
     const MACHINE_HINT_DB = {
@@ -1992,7 +1994,8 @@
         // 台データ画面の特徴: 数字が多い、「総回転」「BIG」「REG」等
         const dataPatterns = ['総回転', 'total', 'big', 'reg', '差枚', '回転数', 'game', 'ゲーム数'];
         // 演出画面の特徴: ゲーム性キーワード
-        const eventPatterns = ['おめでとう', 'congratulations', 'ending', 'エンディング', 'bonus', 'rush', 'at終了', '虹', 'rainbow', 'gold', '設定', '確定'];
+        // ★ 「虹」「rainbow」は台データ画面にも普通に使われるためeventパターンから除外
+        const eventPatterns = ['おめでとう', 'congratulations', 'ending', 'エンディング', 'トロフィー', 'trophy', 'at終了', 'at end', '演出確定', '設定確定'];
 
         let dataScore = 0, eventScore = 0;
         dataPatterns.forEach(p => { if (t.includes(p)) dataScore++; });
@@ -2029,15 +2032,12 @@
             }
         }
 
-        // 色分析
+        // ★ 色分析は「補助情報」として記録するのみ
+        // 色だけで設定示唆を確定させない（台データ画面のレインボーグラデーションを誤検知するため）
+        // テキストでトロフィー・確定演出が検出された場合のみ色を参考にする
         const colors = await analyzeImageColors(imageDataUrl);
-        if (colors.hasRainbow && hints.length === 0) {
-            hints.push({ level: '設定6確定', icon: '🌈', source: 'color', matched: `虹色検出(${(colors.rainbowRate*100).toFixed(1)}%)`, priority: 90 });
-        } else if (colors.hasGold && hints.length === 0) {
-            hints.push({ level: '設定4以上', icon: '🏆', source: 'color', matched: `金色検出(${(colors.goldRate*100).toFixed(1)}%)`, priority: 58 });
-        } else if (colors.hasPurple && hints.length === 0) {
-            hints.push({ level: '設定5以上', icon: '💜', source: 'color', matched: `紫色検出(${(colors.purpleRate*100).toFixed(1)}%)`, priority: 55 });
-        }
+        // 色情報はログとして保持するが、hints配列には追加しない
+        // （サミートロフィー等はテキストパターンで検出済みのため色不要）
 
         // 最も優先度の高いヒントを返す
         hints.sort((a, b) => (b.priority || 0) - (a.priority || 0));
